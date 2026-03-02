@@ -1,0 +1,9 @@
+<Solution>
+  <Project Path="MacroSutra.Core\MacroSutra.Core.csproj" />
+  <Project Path="MacroSutra.Data\MacroSutra.Data.csproj" />
+  <Project Path="MacroSutra.Services\MacroSutra.Services.csproj" />
+  <Project Path="MacroSutra.Web\MacroSutra.Web.csproj" />
+  <Project Path="MacroSutra.Tools\MacroSutra.Tools.csproj" />
+  <Project Path="MacroSutra.Tests\MacroSutra.Tests.csproj" />
+  <Project Path="MacroSutra.SDK\MacroSutra.SDK.csproj" />
+</Solution>
