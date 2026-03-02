@@ -8,11 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MudBlazor" Version="8.5.0" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\MacroSutra.Services\MacroSutra.Services.csproj" />
+    <ProjectReference Include="..\MacroSutra.UI\MacroSutra.UI.csproj" />
     <ProjectReference Include="..\..\daisi-sdk-dotnet\Daisi.SDK.Web\Daisi.SDK.Web.csproj" />
   </ItemGroup>
 
