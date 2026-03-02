@@ -1,0 +1,79 @@
+@page "/trades"
+
+<PageTitle>Trades — MacroSutra</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Trade History</MudText>
+
+<MudGrid Class="mb-3">
+    <MudItem xs="12" md="4">
+        <MudTextField @bind-Value="symbolFilter" Label="Filter by Symbol" Immediate="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+    </MudItem>
+    <MudItem xs="12" md="4">
+        <MudSelect @bind-Value="statusFilter" Label="Status" Clearable="true">
+            @foreach (var s in Enum.GetValues<TradeStatus>())
+            {
+                <MudSelectItem Value="@((TradeStatus?)s)">@s</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+</MudGrid>
+
+<MudTable Items="@trades" Hover="true" Striped="true" Dense="true" Loading="@loading">
+    <HeaderContent>
+        <MudTh>Date</MudTh>
+        <MudTh>Symbol</MudTh>
+        <MudTh>Side</MudTh>
+        <MudTh>Type</MudTh>
+        <MudTh>Qty</MudTh>
+        <MudTh>Filled Price</MudTh>
+        <MudTh>Status</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.CreatedUtc.ToString("MMM dd, HH:mm")</MudTd>
+        <MudTd>@context.Symbol</MudTd>
+        <MudTd>@context.Side</MudTd>
+        <MudTd>@context.OrderType</MudTd>
+        <MudTd>@context.Quantity</MudTd>
+        <MudTd>@(context.FilledPrice?.ToString("C") ?? "—")</MudTd>
+        <MudTd>
+            <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(context.Status)">@context.Status</MudChip>
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
+    [Inject] private IDataProvider Data { get; set; } = default!;
+
+    private List<Trade> trades = new();
+    private string? symbolFilter;
+    private TradeStatus? statusFilter;
+    private bool loading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(AccountId)) return;
+        await LoadTrades();
+    }
+
+    private async Task LoadTrades()
+    {
+        loading = true;
+        try
+        {
+            trades = await Data.GetTradesAsync(AccountId, symbolFilter, statusFilter);
+        }
+        catch { }
+        finally { loading = false; }
+    }
+
+    private static Color GetStatusColor(TradeStatus status) => status switch
+    {
+        TradeStatus.Filled => Color.Success,
+        TradeStatus.Pending or TradeStatus.Submitted => Color.Info,
+        TradeStatus.Cancelled => Color.Default,
+        TradeStatus.Rejected or TradeStatus.Failed => Color.Error,
+        TradeStatus.PartiallyFilled => Color.Warning,
+        _ => Color.Default
+    };
+}

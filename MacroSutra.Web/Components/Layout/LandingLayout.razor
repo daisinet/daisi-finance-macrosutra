@@ -1,0 +1,56 @@
+@inherits LayoutComponentBase
+@using Daisi.SDK.Models
+
+<div class="landing-page">
+    <!-- Header -->
+    <header class="landing-header">
+        <div class="landing-container">
+            <a href="/welcome" class="landing-header-brand">
+                <img src="images/daisi-logo-color-white.svg" alt="MacroSutra" />
+                <span style="font-family: 'Anta', system-ui; color: #F78C1D;">MACROSUTRA</span>
+            </a>
+            <nav class="landing-header-nav">
+                <a href="/features" class="landing-link">Features</a>
+                <a href="/pricing" class="landing-link">Pricing</a>
+                <a href="/learn" class="landing-link">Learn</a>
+            </nav>
+            <div class="landing-header-actions">
+                <a href="@SsoLoginUrl" class="landing-link">Log In</a>
+                <a href="@RegisterUrl" class="landing-btn-primary">Create Account</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Body -->
+    @Body
+
+    <!-- Footer -->
+    <footer class="landing-footer">
+        <div class="landing-container">
+            <a href="/welcome" class="landing-header-brand">
+                <img src="images/daisi-logo-color-white.svg" alt="MacroSutra" />
+                <span style="font-family: 'Anta', system-ui; color: #F78C1D;">MACROSUTRA</span>
+            </a>
+            <nav class="landing-footer-links">
+                <a href="/features">Features</a>
+                <a href="/pricing">Pricing</a>
+                <a href="/learn">Learn</a>
+            </nav>
+            <span>&copy; @DateTime.UtcNow.Year Distributed AI Systems, Inc.</span>
+        </div>
+    </footer>
+</div>
+
+@code {
+    private string SsoLoginUrl => BuildSsoLoginUrl();
+    private string RegisterUrl => $"{DaisiStaticSettings.SsoAuthorityUrl}/account/register";
+
+    private static string BuildSsoLoginUrl()
+    {
+        var appUrl = DaisiStaticSettings.SsoAppUrl;
+        var authorityUrl = DaisiStaticSettings.SsoAuthorityUrl;
+        var callbackUrl = Uri.EscapeDataString($"{appUrl}/sso/callback");
+        var origin = Uri.EscapeDataString(appUrl ?? "");
+        return $"{authorityUrl}/sso/authorize?returnUrl={callbackUrl}&origin={origin}";
+    }
+}

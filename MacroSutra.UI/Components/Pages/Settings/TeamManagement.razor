@@ -1,0 +1,235 @@
+@page "/settings/team"
+
+<PageTitle>Team — MacroSutra</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Team Management</MudText>
+
+@if (showImport)
+{
+    <MudCard Class="mb-4">
+        <MudCardHeader>
+            <MudText Typo="Typo.h6">Import Users from Daisinet</MudText>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                Select users from your Daisinet account to grant MacroSutra access.
+            </MudText>
+
+            @if (importLoading)
+            {
+                <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="me-2" />
+                <MudText Typo="Typo.body2" Class="d-inline">Loading Daisinet users...</MudText>
+            }
+            else if (importUsers.Count == 0)
+            {
+                <MudText Color="Color.Secondary">No additional Daisinet users found to import.</MudText>
+            }
+            else
+            {
+                <MudTable Items="@importUsers" Hover="true" Dense="true" MultiSelection="true" @bind-SelectedItems="selectedImports">
+                    <HeaderContent>
+                        <MudTh>Name</MudTh>
+                        <MudTh>Email</MudTh>
+                        <MudTh>Daisinet Role</MudTh>
+                        <MudTh>MacroSutra Role</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.Member.Name</MudTd>
+                        <MudTd>@context.Member.Email</MudTd>
+                        <MudTd><MudChip T="string" Size="Size.Small" Color="Color.Default">@context.Member.DaisinetRole</MudChip></MudTd>
+                        <MudTd>
+                            <MudSelect @bind-Value="context.AssignedRole" Dense="true" Margin="Margin.Dense" Style="max-width:160px;">
+                                @foreach (var role in Enum.GetValues<MacroSutraRole>().Where(r => r != MacroSutraRole.Owner))
+                                {
+                                    <MudSelectItem Value="@role">@role</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+
+            @if (!string.IsNullOrEmpty(importError))
+            {
+                <MudAlert Severity="Severity.Error" Class="mt-3">@importError</MudAlert>
+            }
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ImportSelected"
+                       Disabled="@(importProcessing || selectedImports.Count == 0)">
+                @if (importProcessing)
+                {
+                    <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="me-2" />
+                }
+                Import Selected
+            </MudButton>
+            <MudButton Variant="Variant.Text" OnClick="@(() => showImport = false)">Cancel</MudButton>
+        </MudCardActions>
+    </MudCard>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <MudText Typo="Typo.h6">Team Members</MudText>
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="ShowImport">
+        <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Class="me-1" /> Import from Daisinet
+    </MudButton>
+</div>
+
+<MudTable Items="@users" Hover="true" Striped="true" Dense="true" Loading="@loading">
+    <HeaderContent>
+        <MudTh>Name</MudTh>
+        <MudTh>Email</MudTh>
+        <MudTh>Role</MudTh>
+        <MudTh>Active</MudTh>
+        <MudTh>Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.Name</MudTd>
+        <MudTd>@context.Email</MudTd>
+        <MudTd>@context.Role</MudTd>
+        <MudTd>
+            <MudIcon Icon="@(context.IsActive ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                     Color="@(context.IsActive ? Color.Success : Color.Error)" />
+        </MudTd>
+        <MudTd>
+            @if (context.IsActive)
+            {
+                <MudButton Size="Size.Small" Color="Color.Error" Variant="Variant.Text"
+                           OnClick="@(() => Deactivate(context))">Deactivate</MudButton>
+            }
+            else
+            {
+                <MudButton Size="Size.Small" Color="Color.Success" Variant="Variant.Text"
+                           OnClick="@(() => Reactivate(context))">Reactivate</MudButton>
+            }
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
+    [Inject] private IDataProvider Data { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+
+    private List<MacroSutraUser> users = new();
+    private bool loading = true;
+
+    // Import state
+    private bool showImport;
+    private bool importLoading;
+    private bool importProcessing;
+    private string? importError;
+    private List<ImportCandidate> importUsers = new();
+    private HashSet<ImportCandidate> selectedImports = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(AccountId)) return;
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        loading = true;
+        try { users = await Data.GetUsersAsync(AccountId); }
+        catch { }
+        finally { loading = false; }
+    }
+
+    private async Task ShowImport()
+    {
+        showImport = true;
+        importLoading = true;
+        importError = null;
+        importUsers.Clear();
+        selectedImports.Clear();
+
+        try
+        {
+            var daisinetMembers = await Data.GetDaisinetTeamMembersAsync();
+            var existingDaisinetIds = users.Select(u => u.DaisinetUserId).ToHashSet();
+
+            foreach (var m in daisinetMembers)
+            {
+                if (!existingDaisinetIds.Contains(m.DaisinetUserId))
+                {
+                    importUsers.Add(new ImportCandidate
+                    {
+                        Member = m,
+                        AssignedRole = MacroSutraRole.Viewer
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            importError = $"Could not load Daisinet users: {ex.Message}";
+        }
+
+        importLoading = false;
+    }
+
+    private async Task ImportSelected()
+    {
+        if (selectedImports.Count == 0)
+        {
+            importError = "Select at least one user to import.";
+            return;
+        }
+
+        importProcessing = true;
+        importError = null;
+
+        try
+        {
+            foreach (var candidate in selectedImports)
+            {
+                await Data.CreateUserAsync(new MacroSutraUser
+                {
+                    AccountId = AccountId,
+                    DaisinetUserId = candidate.Member.DaisinetUserId,
+                    Name = candidate.Member.Name,
+                    Email = candidate.Member.Email,
+                    Role = candidate.AssignedRole,
+                    IsActive = true
+                });
+            }
+
+            Snackbar.Add($"Imported {selectedImports.Count} user(s).", Severity.Success);
+            showImport = false;
+            await LoadUsers();
+        }
+        catch (Exception ex)
+        {
+            importError = $"Import failed: {ex.Message}";
+        }
+
+        importProcessing = false;
+    }
+
+    private async Task Deactivate(MacroSutraUser user)
+    {
+        try
+        {
+            await Data.DeactivateUserAsync(user.id, AccountId);
+            await LoadUsers();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task Reactivate(MacroSutraUser user)
+    {
+        try
+        {
+            await Data.ReactivateUserAsync(user.id, AccountId);
+            await LoadUsers();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private class ImportCandidate
+    {
+        public DaisinetTeamMember Member { get; set; } = new();
+        public MacroSutraRole AssignedRole { get; set; } = MacroSutraRole.Viewer;
+    }
+}

@@ -1,0 +1,227 @@
+@inherits LayoutComponentBase
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject IAuthProvider Auth
+@inject IDataProvider Data
+
+@if (isAuthenticated)
+{
+<div class="ms-app @(sidebarCollapsed ? "sidebar-collapsed" : "") @(darkMode ? "ms-dark" : "")">
+    <!-- Sidebar -->
+    <nav class="ms-sidebar" id="sidebar">
+        <div class="ms-sidebar-header">
+            @if (sidebarCollapsed)
+            {
+                <span class="ms-logo" @onclick="ToggleSidebar" style="cursor: pointer;">
+                    <img src="_content/MacroSutra.UI/images/daisi-logomark-color.svg" alt="MacroSutra" style="height: 28px;" />
+                </span>
+            }
+            else
+            {
+                <span class="ms-logo">
+                    <img src="_content/MacroSutra.UI/images/daisi-logo-color-white.svg" alt="MacroSutra" style="height: 24px;" />
+                    <span class="ms-brand-name">MACROSUTRA</span>
+                </span>
+                <button class="btn btn-sm ms-sidebar-toggle" @onclick="ToggleSidebar">
+                    <i class="fa-duotone fa-angles-left"></i>
+                </button>
+            }
+        </div>
+
+        <div class="ms-sidebar-nav">
+            <NavLink class="ms-nav-item" href="" Match="NavLinkMatch.All">
+                <i class="fa-duotone fa-gauge-high"></i>
+                @if (!sidebarCollapsed) { <span>Dashboard</span> }
+            </NavLink>
+
+            @if (!sidebarCollapsed) { <div class="ms-nav-section">Trading</div> }
+            <NavLink class="ms-nav-item" href="strategies">
+                <i class="fa-duotone fa-chess-knight"></i>
+                @if (!sidebarCollapsed) { <span>Strategies</span> }
+            </NavLink>
+            <NavLink class="ms-nav-item" href="trades">
+                <i class="fa-duotone fa-arrow-right-arrow-left"></i>
+                @if (!sidebarCollapsed) { <span>Trades</span> }
+            </NavLink>
+
+            @if (!sidebarCollapsed) { <div class="ms-nav-section">Portfolio</div> }
+            <NavLink class="ms-nav-item" href="portfolio" Match="NavLinkMatch.All">
+                <i class="fa-duotone fa-chart-pie"></i>
+                @if (!sidebarCollapsed) { <span>Positions</span> }
+            </NavLink>
+            @if (!sidebarCollapsed) { <div class="ms-nav-section">Social</div> }
+            <NavLink class="ms-nav-item" href="subscriptions">
+                <i class="fa-duotone fa-rss"></i>
+                @if (!sidebarCollapsed) { <span>Subscriptions</span> }
+            </NavLink>
+
+            @if (!sidebarCollapsed) { <div class="ms-nav-section">Settings</div> }
+            <NavLink class="ms-nav-item" href="portfolio/accounts">
+                <i class="fa-duotone fa-building-columns"></i>
+                @if (!sidebarCollapsed) { <span>Brokerage Accounts</span> }
+            </NavLink>
+            @if (currentUser?.Role >= MacroSutraRole.Owner)
+            {
+                <NavLink class="ms-nav-item" href="settings/team">
+                    <i class="fa-duotone fa-users-gear"></i>
+                    @if (!sidebarCollapsed) { <span>Team</span> }
+                </NavLink>
+            }
+        </div>
+    </nav>
+
+    <!-- Main content -->
+    <div class="ms-main">
+        <!-- Top header -->
+        <header class="ms-header">
+            <div class="ms-header-left">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="/">MacroSutra</a></li>
+                    </ol>
+                </nav>
+            </div>
+            <div class="ms-header-right">
+                <!-- Public site link -->
+                <a href="/welcome" class="btn btn-sm btn-outline-secondary me-2">
+                    <i class="fa-duotone fa-globe me-1"></i> Public Site
+                </a>
+
+                <!-- Theme toggle -->
+                <button class="btn btn-sm ms-theme-toggle" @onclick="ToggleTheme">
+                    <i class="fa-duotone @(darkMode ? "fa-sun" : "fa-moon")"></i>
+                </button>
+
+                <!-- User menu -->
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fa-duotone fa-user me-1"></i> @userName
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        @if (currentUser != null)
+                        {
+                            <li><span class="dropdown-item-text text-muted small">@currentUser.Role</span></li>
+                            <li><hr class="dropdown-divider" /></li>
+                        }
+                        <li><a class="dropdown-item" href="#" @onclick:preventDefault @onclick="Logout">Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page content -->
+        <main class="ms-content">
+            <CascadingValue Value="currentUser" Name="CurrentUser">
+                <CascadingValue Value="accountId" Name="AccountId">
+                    @Body
+                </CascadingValue>
+            </CascadingValue>
+        </main>
+
+        <!-- Footer -->
+        <footer class="ms-footer">
+            &copy; @DateTime.UtcNow.Year Distributed AI Systems, Inc.
+        </footer>
+    </div>
+</div>
+}
+
+<MudThemeProvider @bind-IsDarkMode="darkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+@code {
+    private bool isAuthenticated;
+    private bool sidebarCollapsed;
+    private bool darkMode;
+    private string accountId = "";
+    private string userName = "";
+    private string daisinetUserId = "";
+    private MacroSutraUser? currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            isAuthenticated = await Auth.IsAuthenticatedAsync();
+            if (!isAuthenticated)
+            {
+                Nav.NavigateTo("/welcome", true);
+                return;
+            }
+
+            userName = await Auth.GetUserNameAsync() ?? "";
+            accountId = await Auth.GetAccountIdAsync() ?? "";
+            daisinetUserId = await Auth.GetDaisinetUserIdAsync() ?? "";
+        }
+        catch
+        {
+            Nav.NavigateTo("/welcome", true);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && isAuthenticated)
+        {
+            var theme = await JS.InvokeAsync<string?>("localStorage.getItem", "ms-theme");
+            darkMode = theme == "dark";
+
+            await ResolveCurrentUser();
+            StateHasChanged();
+        }
+    }
+
+    private async Task ResolveCurrentUser()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(accountId) || string.IsNullOrEmpty(daisinetUserId))
+                return;
+
+            currentUser = await Data.GetUserByDaisinetIdAsync(daisinetUserId, accountId);
+
+            if (currentUser == null)
+            {
+                var existingUsers = await Data.GetUsersAsync(accountId);
+                if (existingUsers.Count == 0)
+                {
+                    // First user — auto-provision as Owner
+                    currentUser = await Data.CreateUserAsync(new MacroSutraUser
+                    {
+                        AccountId = accountId,
+                        DaisinetUserId = daisinetUserId,
+                        Name = userName,
+                        Email = "",
+                        Role = MacroSutraRole.Owner,
+                        IsActive = true
+                    });
+                }
+            }
+        }
+        catch
+        {
+            // Cosmos not configured yet — allow through
+            currentUser = null;
+        }
+    }
+
+    private void ToggleSidebar()
+    {
+        sidebarCollapsed = !sidebarCollapsed;
+    }
+
+    private async Task ToggleTheme()
+    {
+        darkMode = !darkMode;
+        var theme = darkMode ? "dark" : "light";
+        await JS.InvokeVoidAsync("localStorage.setItem", "ms-theme", theme);
+    }
+
+    private async Task Logout()
+    {
+        await Auth.LogoutAsync();
+        Nav.NavigateTo("/welcome", true);
+    }
+}

@@ -1,0 +1,6 @@
+<Router AppAssembly="typeof(Routes).Assembly"
+        AdditionalAssemblies="new[] { typeof(MacroSutra.UI.Services.IAuthProvider).Assembly }">
+    <Found Context="rd">
+        <RouteView RouteData="rd" DefaultLayout="typeof(MacroSutra.UI.Components.Layout.MacroSutraLayout)" />
+    </Found>
+</Router>

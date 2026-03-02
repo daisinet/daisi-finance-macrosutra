@@ -1,0 +1,65 @@
+@page "/subscriptions"
+
+<PageTitle>Subscriptions — MacroSutra</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Subscriptions</MudText>
+
+<MudTable Items="@subscriptions" Hover="true" Striped="true" Dense="true" Loading="@loading">
+    <HeaderContent>
+        <MudTh>Strategy</MudTh>
+        <MudTh>Publisher</MudTh>
+        <MudTh>Action</MudTh>
+        <MudTh>Scale</MudTh>
+        <MudTh>Active</MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.StrategyId</MudTd>
+        <MudTd>@context.PublisherAccountId</MudTd>
+        <MudTd>@context.ActionType</MudTd>
+        <MudTd>@(context.ScaleFactor.ToString("P0"))</MudTd>
+        <MudTd>
+            <MudIcon Icon="@(context.IsActive ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                     Color="@(context.IsActive ? Color.Success : Color.Error)" />
+        </MudTd>
+        <MudTd>
+            @if (context.IsActive)
+            {
+                <MudButton Size="Size.Small" Color="Color.Error" Variant="Variant.Text"
+                           OnClick="@(() => Cancel(context))">Cancel</MudButton>
+            }
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent>
+        <MudText Color="Color.Secondary">No subscriptions yet.</MudText>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
+    [Inject] private IDataProvider Data { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+
+    private List<Subscription> subscriptions = new();
+    private bool loading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(AccountId)) return;
+        loading = true;
+        try { subscriptions = await Data.GetSubscriptionsAsync(AccountId); }
+        catch { }
+        finally { loading = false; }
+    }
+
+    private async Task Cancel(Subscription sub)
+    {
+        try
+        {
+            await Data.CancelSubscriptionAsync(sub.id, AccountId);
+            Snackbar.Add("Subscription cancelled.", Severity.Success);
+            subscriptions = await Data.GetSubscriptionsAsync(AccountId);
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+}

@@ -1,0 +1,108 @@
+@page "/welcome"
+@layout MacroSutra.Web.Components.Layout.LandingLayout
+
+<PageTitle>MacroSutra - AI-Powered Trading Automation</PageTitle>
+
+<!-- Hero -->
+<section class="landing-hero">
+    <div class="landing-container text-center">
+        <h1>AI-Powered Trading Automation</h1>
+        <p class="landing-hero-subtitle">
+            Build automated trading strategies, track your portfolio across brokerages,
+            and let AI optimize your execution. Free to use — pay only for AI inference.
+        </p>
+        <div class="landing-hero-cta">
+            <a href="@RegisterUrl" class="landing-btn-primary landing-btn-lg">Create Your Free Account</a>
+        </div>
+    </div>
+</section>
+
+<!-- Features Overview -->
+<section class="landing-section">
+    <div class="landing-container">
+        <h2 class="text-center">Everything You Need to Trade Smarter</h2>
+        <div class="landing-feature-grid">
+            <div class="landing-feature-card">
+                <i class="fa-duotone fa-chess-knight"></i>
+                <h3>Strategy Builder</h3>
+                <p>Create rule-based trading strategies with triggers, conditions, and automated actions. No coding required.</p>
+            </div>
+            <div class="landing-feature-card">
+                <i class="fa-duotone fa-robot"></i>
+                <h3>Automated Trading</h3>
+                <p>Execute trades automatically when your strategy conditions are met. Set it and let MacroSutra handle the rest.</p>
+            </div>
+            <div class="landing-feature-card">
+                <i class="fa-duotone fa-chart-pie"></i>
+                <h3>Portfolio Tracking</h3>
+                <p>Unified view of positions, P&amp;L, and performance across all your brokerage accounts in real time.</p>
+            </div>
+            <div class="landing-feature-card">
+                <i class="fa-duotone fa-building-columns"></i>
+                <h3>Brokerage Integration</h3>
+                <p>Connect your existing brokerage accounts. Trade across multiple brokers from a single dashboard.</p>
+            </div>
+            <div class="landing-feature-card">
+                <i class="fa-duotone fa-rss"></i>
+                <h3>Social Trading</h3>
+                <p>Subscribe to strategies from other traders. Share your own strategies and build a following.</p>
+            </div>
+            <div class="landing-feature-card">
+                <i class="fa-duotone fa-flask"></i>
+                <h3>Paper Trading</h3>
+                <p>Test your strategies risk-free with simulated trading before committing real capital.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How It Works -->
+<section class="landing-section landing-section-alt">
+    <div class="landing-container">
+        <h2 class="text-center">How It Works</h2>
+        <div class="landing-steps">
+            <div class="landing-step">
+                <div class="landing-step-number">1</div>
+                <h3>Connect Your Brokerage</h3>
+                <p>Link your brokerage accounts securely. MacroSutra supports major brokers and aggregates your data.</p>
+            </div>
+            <div class="landing-step">
+                <div class="landing-step-number">2</div>
+                <h3>Build Strategies</h3>
+                <p>Define triggers (price alerts, technical indicators), conditions (position limits, time windows), and actions (buy, sell, notify).</p>
+            </div>
+            <div class="landing-step">
+                <div class="landing-step-number">3</div>
+                <h3>Automate &amp; Monitor</h3>
+                <p>Activate your strategies and monitor execution in real time. Adjust parameters as markets change.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Pricing -->
+<section class="landing-section">
+    <div class="landing-container text-center">
+        <h2>Simple, Transparent Pricing</h2>
+        <div class="landing-pricing-card">
+            <h3>Free Platform</h3>
+            <p class="landing-pricing-amount">$0</p>
+            <p>All features included. No subscriptions, no tiers, no limits.</p>
+            <p class="mt-3"><strong>Pay only for AI inference</strong> on the DAISI network when you use AI-powered analysis and strategy optimization.</p>
+            <a href="/pricing" class="landing-btn-primary mt-3">Learn More</a>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="landing-section landing-section-alt">
+    <div class="landing-container text-center">
+        <h2>Ready to Automate Your Trading?</h2>
+        <p>Join traders who use MacroSutra to build, test, and execute strategies automatically.</p>
+        <a href="@RegisterUrl" class="landing-btn-primary landing-btn-lg">Create Your Free Account</a>
+    </div>
+</section>
+
+@code {
+    private string RegisterUrl => $"{Daisi.SDK.Models.DaisiStaticSettings.SsoAuthorityUrl}/account/register";
+}

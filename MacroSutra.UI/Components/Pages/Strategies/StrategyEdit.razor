@@ -1,0 +1,103 @@
+@page "/strategies/new"
+@page "/strategies/{StrategyId}"
+
+<PageTitle>@(isNew ? "New Strategy" : "Edit Strategy") — MacroSutra</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">@(isNew ? "New Strategy" : "Edit Strategy")</MudText>
+
+<MudCard>
+    <MudCardContent>
+        <MudTextField @bind-Value="strategy.Name" Label="Strategy Name" Required="true" Class="mb-3" />
+        <MudTextField @bind-Value="strategy.Description" Label="Description" Lines="3" Class="mb-3" />
+
+        <MudText Typo="Typo.subtitle1" Class="mb-2">Symbols</MudText>
+        <SymbolChipInput Symbols="strategy.Symbols" SymbolsChanged="@(s => strategy.Symbols = s)" />
+
+        <MudDivider Class="my-4" />
+
+        <MudText Typo="Typo.subtitle1" Class="mb-2">Logic Group</MudText>
+        <MudSelect @bind-Value="strategy.LogicGroup" Label="Combine conditions with" Class="mb-3">
+            @foreach (var lg in Enum.GetValues<LogicGroupType>())
+            {
+                <MudSelectItem Value="@lg">@lg</MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudText Typo="Typo.subtitle1" Class="mb-2">Trigger Conditions</MudText>
+        @foreach (var condition in strategy.Conditions)
+        {
+            <TriggerConditionEditor Condition="condition" OnRemove="@(() => strategy.Conditions.Remove(condition))" />
+        }
+        <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="AddCondition" Class="mb-3">
+            <MudIcon Icon="@Icons.Material.Filled.Add" /> Add Condition
+        </MudButton>
+
+        <MudDivider Class="my-4" />
+
+        <MudText Typo="Typo.subtitle1" Class="mb-2">Actions</MudText>
+        @foreach (var action in strategy.Actions)
+        {
+            <TradeActionEditor Action="action" OnRemove="@(() => strategy.Actions.Remove(action))" />
+        }
+        <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="AddAction" Class="mb-3">
+            <MudIcon Icon="@Icons.Material.Filled.Add" /> Add Action
+        </MudButton>
+
+        <MudDivider Class="my-4" />
+
+        <MudSelect @bind-Value="strategy.SizingMode" Label="Sizing Mode" Class="mb-3">
+            @foreach (var sm in Enum.GetValues<SizingMode>())
+            {
+                <MudSelectItem Value="@sm">@sm</MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudSwitch @bind-Value="strategy.IsPublic" Label="Public (allow subscriptions)" Color="Color.Primary" Class="mb-3" />
+    </MudCardContent>
+    <MudCardActions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">Save</MudButton>
+        <MudButton Variant="Variant.Text" Href="/strategies">Cancel</MudButton>
+    </MudCardActions>
+</MudCard>
+
+@code {
+    [Parameter] public string? StrategyId { get; set; }
+    [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
+    [CascadingParameter(Name = "CurrentUser")] private MacroSutraUser? CurrentUser { get; set; }
+    [Inject] private IDataProvider Data { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+
+    private TradingStrategy strategy = new();
+    private bool isNew => string.IsNullOrEmpty(StrategyId);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!isNew && !string.IsNullOrEmpty(AccountId))
+        {
+            var existing = await Data.GetStrategyAsync(StrategyId!, AccountId);
+            if (existing != null) strategy = existing;
+        }
+    }
+
+    private void AddCondition() => strategy.Conditions.Add(new TriggerCondition());
+    private void AddAction() => strategy.Actions.Add(new TradeAction());
+
+    private async Task Save()
+    {
+        try
+        {
+            strategy.AccountId = AccountId;
+            strategy.UserId = CurrentUser?.id ?? "";
+
+            if (isNew)
+                await Data.CreateStrategyAsync(strategy);
+            else
+                await Data.UpdateStrategyAsync(strategy);
+
+            Snackbar.Add("Strategy saved.", Severity.Success);
+            Nav.NavigateTo("/strategies");
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+}

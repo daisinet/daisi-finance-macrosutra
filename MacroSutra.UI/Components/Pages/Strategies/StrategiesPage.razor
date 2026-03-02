@@ -1,0 +1,87 @@
+@page "/strategies"
+
+<PageTitle>Strategies — MacroSutra</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Strategies</MudText>
+
+<MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/strategies/new" Class="mb-4">
+    <MudIcon Icon="@Icons.Material.Filled.Add" Class="me-1" /> New Strategy
+</MudButton>
+
+<MudTable Items="@strategies" Hover="true" Striped="true" Dense="true" Loading="@loading">
+    <HeaderContent>
+        <MudTh>Name</MudTh>
+        <MudTh>Symbols</MudTh>
+        <MudTh>Conditions</MudTh>
+        <MudTh>Active</MudTh>
+        <MudTh>Public</MudTh>
+        <MudTh>Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.Name</MudTd>
+        <MudTd>
+            @foreach (var sym in context.Symbols)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Info">@sym</MudChip>
+            }
+        </MudTd>
+        <MudTd>@context.Conditions.Count</MudTd>
+        <MudTd>
+            <MudSwitch T="bool" Value="@context.IsActive" ValueChanged="@(v => ToggleActive(context, v))" Color="Color.Success" />
+        </MudTd>
+        <MudTd>
+            <MudIcon Icon="@(context.IsPublic ? Icons.Material.Filled.Public : Icons.Material.Filled.Lock)" />
+        </MudTd>
+        <MudTd>
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Href="@($"/strategies/{context.id}")" Size="Size.Small" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteStrategy(context))" Size="Size.Small" Color="Color.Error" />
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
+    [Inject] private IDataProvider Data { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+
+    private List<TradingStrategy> strategies = new();
+    private bool loading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(AccountId)) return;
+        await LoadStrategies();
+    }
+
+    private async Task LoadStrategies()
+    {
+        loading = true;
+        try { strategies = await Data.GetStrategiesAsync(AccountId); }
+        catch { Snackbar.Add("Failed to load strategies.", Severity.Error); }
+        finally { loading = false; }
+    }
+
+    private async Task ToggleActive(TradingStrategy strategy, bool active)
+    {
+        try
+        {
+            if (active)
+                await Data.ActivateStrategyAsync(strategy.id, AccountId);
+            else
+                await Data.DeactivateStrategyAsync(strategy.id, AccountId);
+            await LoadStrategies();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task DeleteStrategy(TradingStrategy strategy)
+    {
+        try
+        {
+            await Data.DeleteStrategyAsync(strategy.id, AccountId);
+            Snackbar.Add("Strategy deleted.", Severity.Success);
+            await LoadStrategies();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+}

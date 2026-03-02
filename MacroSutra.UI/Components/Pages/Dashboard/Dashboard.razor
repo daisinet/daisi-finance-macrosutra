@@ -1,0 +1,123 @@
+@page "/"
+
+<PageTitle>Dashboard — MacroSutra</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Dashboard</MudText>
+
+<MudGrid>
+    <!-- Portfolio Summary -->
+    <MudItem xs="12" md="4">
+        <MudCard>
+            <MudCardContent>
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Total Positions</MudText>
+                <MudText Typo="Typo.h5">@positions.Count</MudText>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <MudItem xs="12" md="4">
+        <MudCard>
+            <MudCardContent>
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Active Strategies</MudText>
+                <MudText Typo="Typo.h5">@strategies.Count(s => s.IsActive)</MudText>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <MudItem xs="12" md="4">
+        <MudCard>
+            <MudCardContent>
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Recent Trades</MudText>
+                <MudText Typo="Typo.h5">@recentTrades.Count</MudText>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <!-- Active Strategies -->
+    <MudItem xs="12" md="6">
+        <MudCard>
+            <MudCardHeader>
+                <MudText Typo="Typo.h6">Active Strategies</MudText>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (strategies.Any(s => s.IsActive))
+                {
+                    <MudSimpleTable Dense="true" Hover="true">
+                        <thead>
+                            <tr><th>Name</th><th>Symbols</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var s in strategies.Where(s => s.IsActive).Take(5))
+                            {
+                                <tr>
+                                    <td>@s.Name</td>
+                                    <td>@string.Join(", ", s.Symbols)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                }
+                else
+                {
+                    <MudText Color="Color.Secondary">No active strategies.</MudText>
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <!-- Recent Trades -->
+    <MudItem xs="12" md="6">
+        <MudCard>
+            <MudCardHeader>
+                <MudText Typo="Typo.h6">Recent Trades</MudText>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (recentTrades.Count > 0)
+                {
+                    <MudSimpleTable Dense="true" Hover="true">
+                        <thead>
+                            <tr><th>Symbol</th><th>Side</th><th>Status</th><th>Date</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var t in recentTrades.Take(5))
+                            {
+                                <tr>
+                                    <td>@t.Symbol</td>
+                                    <td>@t.Side</td>
+                                    <td>@t.Status</td>
+                                    <td>@t.CreatedUtc.ToString("MMM dd, HH:mm")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                }
+                else
+                {
+                    <MudText Color="Color.Secondary">No trades yet.</MudText>
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
+    [Inject] private IDataProvider Data { get; set; } = default!;
+
+    private List<TradingStrategy> strategies = new();
+    private List<Trade> recentTrades = new();
+    private List<MacroSutra.Core.Models.Position> positions = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(AccountId)) return;
+
+        try
+        {
+            strategies = await Data.GetStrategiesAsync(AccountId);
+            recentTrades = await Data.GetTradesAsync(AccountId);
+            positions = await Data.GetPositionsAsync(AccountId);
+        }
+        catch { /* Cosmos not configured yet */ }
+    }
+}

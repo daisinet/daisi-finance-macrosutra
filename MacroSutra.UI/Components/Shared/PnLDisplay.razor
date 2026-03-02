@@ -1,0 +1,19 @@
+@if (Value.HasValue)
+{
+    <span class="@CssClass">@Value.Value.ToString("C")</span>
+}
+else
+{
+    <span>—</span>
+}
+
+@code {
+    [Parameter] public decimal? Value { get; set; }
+
+    private string CssClass => Value switch
+    {
+        > 0 => "text-success fw-bold",
+        < 0 => "text-danger fw-bold",
+        _ => ""
+    };
+}

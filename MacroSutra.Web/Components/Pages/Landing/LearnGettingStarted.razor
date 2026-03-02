@@ -1,0 +1,66 @@
+@page "/learn/getting-started"
+@layout MacroSutra.Web.Components.Layout.LandingLayout
+
+<PageTitle>MacroSutra - Getting Started</PageTitle>
+
+<section class="landing-section">
+    <div class="landing-container">
+        <h1>Getting Started with MacroSutra</h1>
+        <p>This guide walks you through creating an account, linking a brokerage, building your first strategy, and monitoring your portfolio.</p>
+
+        <h2 id="account">1. Create Your Account</h2>
+        <p>MacroSutra uses DAISI single sign-on (SSO) for authentication. If you already have a Daisinet account, you can log in immediately. Otherwise, create a free account:</p>
+        <ol>
+            <li>Click <strong>Create Account</strong> in the top navigation.</li>
+            <li>Complete the registration form on the DAISI SSO page.</li>
+            <li>After registration, you'll be redirected back to MacroSutra and automatically signed in.</li>
+        </ol>
+        <p>The first user on an account is automatically assigned the <strong>Owner</strong> role with full permissions.</p>
+
+        <h2 id="brokerage" class="mt-4">2. Link a Brokerage Account</h2>
+        <p>Connect your brokerage to trade and track positions through MacroSutra:</p>
+        <ol>
+            <li>Navigate to <strong>Portfolio &rarr; Brokerage Accounts</strong> in the sidebar.</li>
+            <li>Click <strong>Add Account</strong> and select your broker.</li>
+            <li>Complete the OAuth authorization flow or enter your API credentials.</li>
+            <li>MacroSutra will sync your positions and begin tracking trades in real time.</li>
+        </ol>
+        <p>You can connect multiple accounts from different brokers. All positions are aggregated into a single portfolio view.</p>
+
+        <h2 id="strategies" class="mt-4">3. Create Your First Strategy</h2>
+        <p>Strategies in MacroSutra are built from three components:</p>
+        <ul>
+            <li><strong>Triggers</strong> — Events that start evaluation (e.g., price crosses a threshold, technical indicator signal, scheduled time).</li>
+            <li><strong>Conditions</strong> — Rules that must be true for the strategy to act (e.g., position size limits, time-of-day window, portfolio allocation cap).</li>
+            <li><strong>Actions</strong> — What happens when triggers fire and conditions pass (e.g., buy/sell shares, send a notification, adjust a position).</li>
+        </ul>
+        <p>To create a strategy:</p>
+        <ol>
+            <li>Navigate to <strong>Strategies</strong> in the sidebar and click <strong>New Strategy</strong>.</li>
+            <li>Give your strategy a name and optional description.</li>
+            <li>Add one or more <strong>triggers</strong> — select a trigger type and configure its parameters.</li>
+            <li>Add <strong>conditions</strong> to filter when the strategy should execute.</li>
+            <li>Define <strong>actions</strong> to specify what trades or notifications to perform.</li>
+            <li>Choose a target brokerage account for trade execution.</li>
+            <li>Save the strategy. You can activate it immediately or test with paper trading first.</li>
+        </ol>
+
+        <h2 id="portfolio" class="mt-4">4. View Positions and Trades</h2>
+        <p>Once your brokerage is linked and strategies are running:</p>
+        <ul>
+            <li><strong>Dashboard</strong> — Overview of portfolio value, recent trades, and active strategies.</li>
+            <li><strong>Positions</strong> — Current holdings with real-time P&amp;L across all accounts.</li>
+            <li><strong>Trades</strong> — Full trade history with filtering by strategy, symbol, and date range.</li>
+        </ul>
+
+        <h2 id="team" class="mt-4">5. Team Management</h2>
+        <p>MacroSutra supports team accounts imported from your Daisinet organization:</p>
+        <ol>
+            <li>Navigate to <strong>Settings &rarr; Team</strong>.</li>
+            <li>Team members from your Daisinet account can be activated for MacroSutra access.</li>
+            <li>Assign roles: <strong>Viewer</strong> (read-only), <strong>Trader</strong> (can execute), <strong>Admin</strong> (full management), or <strong>Owner</strong> (account owner).</li>
+        </ol>
+
+        <p class="mt-4"><a href="/learn">← Back to Learn</a></p>
+    </div>
+</section>

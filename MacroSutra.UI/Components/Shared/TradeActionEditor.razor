@@ -1,0 +1,44 @@
+<MudCard Class="mb-2" Outlined="true">
+    <MudCardContent>
+        <MudGrid>
+            <MudItem xs="12" md="2">
+                <MudSelect @bind-Value="Action.ActionType" Label="Type" Dense="true">
+                    @foreach (var at in Enum.GetValues<TradeActionType>())
+                    {
+                        <MudSelectItem Value="@at">@at</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudSelect @bind-Value="Action.Side" Label="Side" Dense="true">
+                    @foreach (var s in Enum.GetValues<TradeSide>())
+                    {
+                        <MudSelectItem Value="@s">@s</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudSelect @bind-Value="Action.QuantityType" Label="Qty Type" Dense="true">
+                    @foreach (var qt in Enum.GetValues<QuantityType>())
+                    {
+                        <MudSelectItem Value="@qt">@qt</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudNumericField @bind-Value="Action.Quantity" Label="Quantity" Dense="true" />
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudNumericField @bind-Value="Action.LimitPrice" Label="Limit" Dense="true" />
+            </MudItem>
+            <MudItem xs="12" md="2" Class="d-flex align-end">
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="OnRemove" />
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public TradeAction Action { get; set; } = new();
+    [Parameter] public EventCallback OnRemove { get; set; }
+}

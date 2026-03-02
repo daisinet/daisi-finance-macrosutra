@@ -1,0 +1,82 @@
+@page "/portfolio/accounts"
+
+<PageTitle>Brokerage Accounts — MacroSutra</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Brokerage Accounts</MudText>
+
+<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => showAdd = true)" Class="mb-4">
+    <MudIcon Icon="@Icons.Material.Filled.Add" Class="me-1" /> Link Account
+</MudButton>
+
+<MudTable Items="@accounts" Hover="true" Striped="true" Dense="true" Loading="@loading">
+    <HeaderContent>
+        <MudTh>Name</MudTh>
+        <MudTh>Provider</MudTh>
+        <MudTh>Active</MudTh>
+        <MudTh>Created</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.Name</MudTd>
+        <MudTd>@context.Provider</MudTd>
+        <MudTd><MudIcon Icon="@(context.IsActive ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)" Color="@(context.IsActive ? Color.Success : Color.Error)" /></MudTd>
+        <MudTd>@context.CreatedUtc.ToString("MMM dd, yyyy")</MudTd>
+    </RowTemplate>
+</MudTable>
+
+<MudDialog @bind-Visible="showAdd">
+    <TitleContent>Link Brokerage Account</TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="newAccount.Name" Label="Account Name" Required="true" Class="mb-3" />
+        <MudSelect @bind-Value="newAccount.Provider" Label="Provider" Class="mb-3">
+            @foreach (var p in Enum.GetValues<BrokerageProvider>())
+            {
+                <MudSelectItem Value="@p">@p</MudSelectItem>
+            }
+        </MudSelect>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => showAdd = false)">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddAccount">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
+    [CascadingParameter(Name = "CurrentUser")] private MacroSutraUser? CurrentUser { get; set; }
+    [Inject] private IDataProvider Data { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+
+    private List<BrokerageAccount> accounts = new();
+    private BrokerageAccount newAccount = new();
+    private bool loading = true;
+    private bool showAdd;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(AccountId)) return;
+        await LoadAccounts();
+    }
+
+    private async Task LoadAccounts()
+    {
+        loading = true;
+        try { accounts = await Data.GetBrokerageAccountsAsync(AccountId); }
+        catch { }
+        finally { loading = false; }
+    }
+
+    private async Task AddAccount()
+    {
+        try
+        {
+            newAccount.AccountId = AccountId;
+            newAccount.UserId = CurrentUser?.id ?? "";
+            await Data.CreateBrokerageAccountAsync(newAccount);
+            Snackbar.Add("Account linked.", Severity.Success);
+            showAdd = false;
+            newAccount = new();
+            await LoadAccounts();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+}

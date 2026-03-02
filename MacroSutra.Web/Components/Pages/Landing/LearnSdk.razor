@@ -1,0 +1,82 @@
+@page "/learn/sdk"
+@layout MacroSutra.Web.Components.Layout.LandingLayout
+
+<PageTitle>MacroSutra - SDK Reference</PageTitle>
+
+<section class="landing-section">
+    <div class="landing-container">
+        <h1>SDK Reference</h1>
+        <p>The MacroSutra .NET SDK lets you manage strategies, query trades, and access portfolio data programmatically.</p>
+
+        <h2 id="installation" class="mt-4">Installation</h2>
+        <p>Install the SDK via NuGet:</p>
+<pre><code>dotnet add package Daisi.SDK</code></pre>
+
+        <h2 id="authentication" class="mt-4">Authentication</h2>
+        <p>Authenticate with your DAISI client key. You can find your key in the Daisinet Manager under <strong>Account Settings &rarr; API Keys</strong>.</p>
+<pre><code>using Daisi.SDK.Models;
+
+DaisiStaticSettings.ClientKey = "your-client-key";
+DaisiStaticSettings.OrcIpAddressOrDomain = "orc.daisinet.com";
+DaisiStaticSettings.OrcPort = 443;
+DaisiStaticSettings.OrcUseSSL = true;</code></pre>
+
+        <h2 id="strategies" class="mt-4">Strategy CRUD</h2>
+        <p>Create, read, update, and delete trading strategies:</p>
+<pre><code>// Create a new strategy
+var strategy = new MacroSutraStrategy
+{
+    Name = "My Price Alert Strategy",
+    Description = "Buy when price drops below threshold",
+    IsActive = true,
+    Triggers = new List&lt;StrategyTrigger&gt;
+    {
+        new StrategyTrigger { Type = "PriceBelow", Symbol = "AAPL", Value = 150.00m }
+    },
+    Conditions = new List&lt;StrategyCondition&gt;
+    {
+        new StrategyCondition { Type = "MaxPositionSize", Value = 100 }
+    },
+    Actions = new List&lt;StrategyAction&gt;
+    {
+        new StrategyAction { Type = "Buy", Symbol = "AAPL", Quantity = 10 }
+    }
+};
+
+var created = await strategyService.CreateAsync(accountId, strategy);
+
+// List all strategies
+var strategies = await strategyService.GetAllAsync(accountId);
+
+// Update a strategy
+created.IsActive = false;
+await strategyService.UpdateAsync(accountId, created);
+
+// Delete a strategy
+await strategyService.DeleteAsync(accountId, created.Id);</code></pre>
+
+        <h2 id="trades" class="mt-4">Trade Queries</h2>
+        <p>Query trade history with optional filters:</p>
+<pre><code>// Get all trades
+var trades = await tradeService.GetTradesAsync(accountId);
+
+// Filter by symbol
+var appleTrades = await tradeService.GetTradesAsync(accountId, symbol: "AAPL");
+
+// Filter by strategy
+var strategyTrades = await tradeService.GetTradesAsync(accountId, strategyId: myStrategy.Id);</code></pre>
+
+        <h2 id="portfolio" class="mt-4">Portfolio Queries</h2>
+        <p>Access positions and brokerage account data:</p>
+<pre><code>// Get all positions across brokerages
+var positions = await portfolioService.GetPositionsAsync(accountId);
+
+// Get brokerage accounts
+var accounts = await portfolioService.GetBrokerageAccountsAsync(accountId);
+
+// Get positions for a specific brokerage account
+var accountPositions = await portfolioService.GetPositionsAsync(accountId, brokerageAccountId: account.Id);</code></pre>
+
+        <p class="mt-4"><a href="/learn">← Back to Learn</a></p>
+    </div>
+</section>

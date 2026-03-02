@@ -1,0 +1,40 @@
+<div class="d-flex flex-wrap gap-2 mb-2">
+    @foreach (var symbol in Symbols)
+    {
+        <MudChip T="string" Color="Color.Info" OnClose="@(() => RemoveSymbol(symbol))">@symbol</MudChip>
+    }
+</div>
+
+<MudTextField @bind-Value="newSymbol" Label="Add Symbol" Placeholder="e.g. AAPL"
+              Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Add"
+              OnAdornmentClick="AddSymbol" OnKeyDown="OnKeyDown" Style="max-width: 200px;" />
+
+@code {
+    [Parameter] public List<string> Symbols { get; set; } = new();
+    [Parameter] public EventCallback<List<string>> SymbolsChanged { get; set; }
+
+    private string newSymbol = "";
+
+    private async Task AddSymbol()
+    {
+        var sym = newSymbol.Trim().ToUpperInvariant();
+        if (!string.IsNullOrEmpty(sym) && !Symbols.Contains(sym))
+        {
+            Symbols.Add(sym);
+            await SymbolsChanged.InvokeAsync(Symbols);
+        }
+        newSymbol = "";
+    }
+
+    private async Task RemoveSymbol(string symbol)
+    {
+        Symbols.Remove(symbol);
+        await SymbolsChanged.InvokeAsync(Symbols);
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await AddSymbol();
+    }
+}

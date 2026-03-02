@@ -1,0 +1,36 @@
+<MudCard Class="mb-2" Outlined="true">
+    <MudCardContent>
+        <MudGrid>
+            <MudItem xs="12" md="3">
+                <MudSelect @bind-Value="Condition.ConditionType" Label="Type" Dense="true">
+                    @foreach (var ct in Enum.GetValues<ConditionType>())
+                    {
+                        <MudSelectItem Value="@ct">@ct</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudSelect @bind-Value="Condition.Operator" Label="Operator" Dense="true">
+                    @foreach (var op in Enum.GetValues<ConditionOperator>())
+                    {
+                        <MudSelectItem Value="@op">@op</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudNumericField @bind-Value="Condition.Value" Label="Value" Dense="true" />
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudNumericField @bind-Value="Condition.Period" Label="Period" Dense="true" />
+            </MudItem>
+            <MudItem xs="12" md="2" Class="d-flex align-end">
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="OnRemove" />
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public TriggerCondition Condition { get; set; } = new();
+    [Parameter] public EventCallback OnRemove { get; set; }
+}

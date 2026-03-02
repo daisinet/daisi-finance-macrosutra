@@ -1,0 +1,333 @@
+/* ── MacroSutra Landing Page Styles ── */
+
+:root {
+    --landing-primary: #F78C1D;
+    --landing-primary-dark: #e07a0e;
+}
+
+.landing-page {
+    font-family: 'Inter', 'DM Sans', sans-serif;
+    color: #1f2937;
+    background: #fff;
+}
+
+.landing-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+/* Header */
+.landing-header {
+    background: #1e293b;
+    padding: 1rem 0;
+}
+
+.landing-header .landing-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.landing-header-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 1.2rem;
+}
+
+.landing-header-brand img {
+    height: 28px;
+}
+
+.landing-header-nav {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.landing-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.landing-link {
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.landing-link:hover {
+    color: #fff;
+}
+
+.landing-btn-primary {
+    display: inline-block;
+    background: var(--landing-primary);
+    color: #fff;
+    padding: 0.5rem 1.25rem;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.9rem;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.landing-btn-primary:hover {
+    background: var(--landing-primary-dark);
+    color: #fff;
+}
+
+.landing-btn-lg {
+    padding: 0.75rem 2rem;
+    font-size: 1.1rem;
+}
+
+/* Hero */
+.landing-hero {
+    padding: 6rem 0;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%);
+    color: #fff;
+}
+
+.landing-hero h1 {
+    font-size: 3rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+}
+
+.landing-hero-subtitle {
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.8);
+    max-width: 600px;
+    margin: 0 auto 2rem;
+}
+
+.landing-hero-cta {
+    margin-top: 2rem;
+}
+
+/* Sections */
+.landing-section {
+    padding: 5rem 0;
+}
+
+.landing-section-alt {
+    background: #f9fafb;
+}
+
+.landing-section h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 2rem;
+}
+
+/* Feature Grid */
+.landing-feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.landing-feature-card {
+    padding: 2rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    text-align: center;
+    transition: box-shadow 0.2s;
+}
+
+.landing-feature-card:hover {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.landing-feature-card i {
+    font-size: 2rem;
+    color: var(--landing-primary);
+    margin-bottom: 1rem;
+}
+
+.landing-feature-card h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+}
+
+.landing-feature-card p {
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
+/* Feature Detail */
+.landing-feature-detail {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+    padding: 2rem 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.landing-feature-detail-icon {
+    flex-shrink: 0;
+    width: 80px;
+    color: var(--landing-primary);
+    text-align: center;
+    padding-top: 0.5rem;
+}
+
+.landing-feature-detail h2 {
+    margin-bottom: 0.75rem;
+    font-size: 1.5rem;
+}
+
+.landing-feature-detail p {
+    color: #4b5563;
+    line-height: 1.7;
+}
+
+/* Steps */
+.landing-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 2rem;
+}
+
+.landing-step {
+    text-align: center;
+    padding: 2rem;
+}
+
+.landing-step-number {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--landing-primary);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+/* Pricing */
+.landing-pricing-card {
+    display: inline-block;
+    padding: 3rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    max-width: 500px;
+}
+
+.landing-pricing-amount {
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--landing-primary);
+    margin: 0.5rem 0;
+}
+
+.landing-pricing-features {
+    list-style: none;
+    padding: 0;
+    text-align: left;
+}
+
+.landing-pricing-features li {
+    padding: 0.4rem 0;
+    color: #4b5563;
+}
+
+.landing-pricing-features i {
+    color: #10b981;
+    margin-right: 0.5rem;
+}
+
+/* Comparison Table */
+.landing-comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.landing-comparison-table th,
+.landing-comparison-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.landing-comparison-table thead th {
+    background: #f9fafb;
+    font-weight: 600;
+}
+
+/* Learn */
+.landing-learn-list {
+    list-style: none;
+    padding: 0;
+}
+
+.landing-learn-list li {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.landing-learn-list a {
+    color: var(--landing-primary);
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.landing-learn-list a:hover {
+    text-decoration: underline;
+}
+
+/* Footer */
+.landing-footer {
+    background: #1e293b;
+    color: rgba(255, 255, 255, 0.6);
+    padding: 2rem 0;
+}
+
+.landing-footer .landing-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.landing-footer-links {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.landing-footer-links a {
+    color: rgba(255, 255, 255, 0.6);
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.landing-footer-links a:hover {
+    color: #fff;
+}
+
+/* Code blocks on Learn pages */
+.landing-page pre {
+    background: #1f2937;
+    color: #e5e7eb;
+    padding: 1rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    margin: 0.5rem 0 1rem;
+}
+
+.landing-page code {
+    font-family: 'Cascadia Code', 'Consolas', monospace;
+}

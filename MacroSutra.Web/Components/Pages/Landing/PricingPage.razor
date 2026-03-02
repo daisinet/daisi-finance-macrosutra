@@ -1,0 +1,55 @@
+@page "/pricing"
+@layout MacroSutra.Web.Components.Layout.LandingLayout
+
+<PageTitle>MacroSutra - Pricing</PageTitle>
+
+<section class="landing-section">
+    <div class="landing-container text-center">
+        <h1>Pricing</h1>
+        <p class="landing-hero-subtitle">MacroSutra is free to use. You only pay for AI inference on the DAISI network.</p>
+
+        <div class="landing-pricing-card mt-4">
+            <h2>MacroSutra Platform</h2>
+            <p class="landing-pricing-amount">Free</p>
+            <ul class="landing-pricing-features">
+                <li><i class="fa-duotone fa-check"></i> Unlimited strategies</li>
+                <li><i class="fa-duotone fa-check"></i> Unlimited brokerage accounts</li>
+                <li><i class="fa-duotone fa-check"></i> Real-time portfolio tracking</li>
+                <li><i class="fa-duotone fa-check"></i> Automated trade execution</li>
+                <li><i class="fa-duotone fa-check"></i> Paper trading</li>
+                <li><i class="fa-duotone fa-check"></i> Social trading &amp; subscriptions</li>
+                <li><i class="fa-duotone fa-check"></i> REST API and SDK access</li>
+                <li><i class="fa-duotone fa-check"></i> Team management</li>
+            </ul>
+        </div>
+
+        <div class="landing-pricing-card mt-4">
+            <h2>AI Inference</h2>
+            <p class="landing-pricing-amount">Pay per use</p>
+            <p>When you use AI features (strategy optimization, market analysis, risk assessment, portfolio insights), you pay only for the DAISI network inference used. No markup from MacroSutra.</p>
+            <p class="mt-2"><a href="https://daisi.io/pricing" class="landing-link" style="color: var(--landing-primary);">See DAISI inference pricing</a></p>
+        </div>
+
+        <h3 class="mt-5">How MacroSutra Compares</h3>
+        <table class="landing-comparison-table mt-3">
+            <thead>
+                <tr>
+                    <th>Feature</th>
+                    <th>MacroSutra</th>
+                    <th>TradingView</th>
+                    <th>QuantConnect</th>
+                    <th>Alpaca</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>Strategy Builder</td><td>Included</td><td>Pine Script</td><td>Python/C#</td><td>API only</td></tr>
+                <tr><td>Automated Execution</td><td>Included</td><td>Webhooks</td><td>Included</td><td>Included</td></tr>
+                <tr><td>Multi-Broker Support</td><td>Included</td><td>Limited</td><td>Limited</td><td>Alpaca only</td></tr>
+                <tr><td>Portfolio Tracking</td><td>Included</td><td>Basic</td><td>Basic</td><td>Alpaca only</td></tr>
+                <tr><td>Social Trading</td><td>Included</td><td>Ideas only</td><td>N/A</td><td>N/A</td></tr>
+                <tr><td>AI Analysis</td><td>Pay per use</td><td>N/A</td><td>N/A</td><td>N/A</td></tr>
+                <tr><td>Base Price</td><td><strong>$0</strong></td><td><strong>$15+/mo</strong></td><td><strong>$8+/mo</strong></td><td><strong>$0</strong></td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>

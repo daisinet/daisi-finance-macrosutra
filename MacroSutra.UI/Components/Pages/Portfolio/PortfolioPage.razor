@@ -1,0 +1,63 @@
+@page "/portfolio"
+
+<PageTitle>Portfolio — MacroSutra</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Positions</MudText>
+
+@if (accounts.Count > 1)
+{
+    <MudSelect @bind-Value="selectedAccountId" Label="Brokerage Account" Class="mb-3" Style="max-width: 300px;">
+        <MudSelectItem Value="@("")">All Accounts</MudSelectItem>
+        @foreach (var acct in accounts)
+        {
+            <MudSelectItem Value="@acct.id">@acct.Name (@acct.Provider)</MudSelectItem>
+        }
+    </MudSelect>
+}
+
+<MudTable Items="@filteredPositions" Hover="true" Striped="true" Dense="true" Loading="@loading">
+    <HeaderContent>
+        <MudTh>Symbol</MudTh>
+        <MudTh>Quantity</MudTh>
+        <MudTh>Avg Cost</MudTh>
+        <MudTh>Current Price</MudTh>
+        <MudTh>Market Value</MudTh>
+        <MudTh>P&L</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.Symbol</MudTd>
+        <MudTd>@context.Quantity</MudTd>
+        <MudTd>@context.AverageCost.ToString("C")</MudTd>
+        <MudTd>@(context.CurrentPrice?.ToString("C") ?? "—")</MudTd>
+        <MudTd>@(context.MarketValue?.ToString("C") ?? "—")</MudTd>
+        <MudTd><PnLDisplay Value="@context.UnrealizedPnL" /></MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
+    [Inject] private IDataProvider Data { get; set; } = default!;
+
+    private List<BrokerageAccount> accounts = new();
+    private List<MacroSutra.Core.Models.Position> positions = new();
+    private string selectedAccountId = "";
+    private bool loading = true;
+
+    private List<MacroSutra.Core.Models.Position> filteredPositions =>
+        string.IsNullOrEmpty(selectedAccountId)
+            ? positions
+            : positions.Where(p => p.BrokerageAccountId == selectedAccountId).ToList();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(AccountId)) return;
+        loading = true;
+        try
+        {
+            accounts = await Data.GetBrokerageAccountsAsync(AccountId, activeOnly: true);
+            positions = await Data.GetPositionsAsync(AccountId);
+        }
+        catch { }
+        finally { loading = false; }
+    }
+}
