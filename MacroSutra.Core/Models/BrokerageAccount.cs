@@ -20,6 +20,26 @@ public class BrokerageAccount
     /// </summary>
     public string CredentialRef { get; set; } = "";
 
+    /// <summary>
+    /// Provider-specific credentials stored as JSON.
+    /// </summary>
+    public string CredentialData { get; set; } = "";
+
+    /// <summary>
+    /// Whether this account uses paper/sandbox mode.
+    /// </summary>
+    public bool IsPaperTrading { get; set; }
+
+    /// <summary>
+    /// Last-synced account balance from the brokerage.
+    /// </summary>
+    public decimal? CachedBalance { get; set; }
+
+    /// <summary>
+    /// When the account was last synced with the brokerage.
+    /// </summary>
+    public DateTime? LastSyncUtc { get; set; }
+
     public bool IsActive { get; set; } = true;
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedUtc { get; set; }

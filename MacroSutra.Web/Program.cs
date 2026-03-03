@@ -32,11 +32,22 @@ builder.Services.AddScoped<UserContext>();
 builder.Services.AddScoped<StrategyService>();
 builder.Services.AddScoped<TradeService>();
 builder.Services.AddScoped<PortfolioService>();
+builder.Services.AddScoped<PositionSyncService>();
 builder.Services.AddScoped<SubscriptionService>();
+
+// Phase 3: Strategy evaluation engine
+builder.Services.AddSingleton<MarketDataService>();
+builder.Services.AddScoped<ConditionEvaluator>();
+builder.Services.AddScoped<TradeExecutionService>();
+builder.Services.AddHostedService<StrategyEvaluationService>();
+builder.Services.AddHostedService<OrderStatusTracker>();
 
 // Brokers
 builder.Services.AddSingleton<PaperBrokerageProvider>();
+builder.Services.AddSingleton<AlpacaBrokerageProvider>();
+builder.Services.AddSingleton<WebullBrokerageProvider>();
 builder.Services.AddScoped<BrokerageProviderFactory>();
+builder.Services.AddHttpClient("Webull", c => c.Timeout = TimeSpan.FromSeconds(30));
 
 // UI abstractions — Web implementations
 builder.Services.AddScoped<IAuthProvider, WebAuthProvider>();

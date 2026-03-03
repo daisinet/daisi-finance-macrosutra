@@ -4,6 +4,32 @@
 
 <MudText Typo="Typo.h4" Class="mb-4">Positions</MudText>
 
+@* Balance summary cards *@
+<MudGrid Class="mb-4">
+    <MudItem xs="12" md="4">
+        <MudCard>
+            <MudCardContent>
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Total Balance</MudText>
+                <MudText Typo="Typo.h5">@totalBalance.ToString("C")</MudText>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+    @foreach (var acct in accounts.Where(a => a.CachedBalance.HasValue))
+    {
+        <MudItem xs="12" md="4">
+            <MudCard>
+                <MudCardContent>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">@acct.Name (@acct.Provider)</MudText>
+                    <MudText Typo="Typo.h6">@acct.CachedBalance?.ToString("C")</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        @(acct.LastSyncUtc.HasValue ? $"Synced {acct.LastSyncUtc.Value:MMM dd, HH:mm}" : "Not synced")
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    }
+</MudGrid>
+
 @if (accounts.Count > 1)
 {
     <MudSelect @bind-Value="selectedAccountId" Label="Brokerage Account" Class="mb-3" Style="max-width: 300px;">
@@ -42,6 +68,10 @@
     private List<MacroSutra.Core.Models.Position> positions = new();
     private string selectedAccountId = "";
     private bool loading = true;
+
+    private decimal totalBalance => accounts
+        .Where(a => a.IsActive && a.CachedBalance.HasValue)
+        .Sum(a => a.CachedBalance!.Value);
 
     private List<MacroSutra.Core.Models.Position> filteredPositions =>
         string.IsNullOrEmpty(selectedAccountId)

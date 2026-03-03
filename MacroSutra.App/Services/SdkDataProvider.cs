@@ -145,6 +145,31 @@ public class SdkDataProvider(MacroSutraClientFactory clientFactory, MauiAuthProv
     public Task<BrokerageAccount> CreateBrokerageAccountAsync(BrokerageAccount account) =>
         throw new NotSupportedException("Brokerage account creation via SDK not yet implemented.");
 
+    public Task<BrokerageAccount> UpdateBrokerageAccountAsync(BrokerageAccount account) =>
+        throw new NotSupportedException("Brokerage account update via SDK not yet implemented.");
+
+    public Task<BrokerageAccount> DeactivateBrokerageAccountAsync(string id, string accountId) =>
+        throw new NotSupportedException("Brokerage account deactivation via SDK not yet implemented.");
+
+    public Task<BrokerageAccount> ValidateAndLinkBrokerageAccountAsync(BrokerageAccount account) =>
+        throw new NotSupportedException("Brokerage account linking via SDK not yet implemented.");
+
+    public async Task<SyncResultDto> SyncBrokerageAccountAsync(string id, string accountId)
+    {
+        using var client = await GetClientAsync();
+        var result = await client.Portfolio.SyncAccountAsync(id);
+        return new SyncResultDto { PositionCount = result.PositionCount, Balance = result.Balance, Error = result.Error };
+    }
+
+    public async Task<Dictionary<string, SyncResultDto>> SyncAllBrokerageAccountsAsync(string accountId)
+    {
+        using var client = await GetClientAsync();
+        var results = await client.Portfolio.SyncAllAsync();
+        return results.ToDictionary(
+            kvp => kvp.Key,
+            kvp => new SyncResultDto { PositionCount = kvp.Value.PositionCount, Balance = kvp.Value.Balance, Error = kvp.Value.Error });
+    }
+
     public async Task<List<Position>> GetPositionsAsync(string accountId, string? brokerageAccountId = null)
     {
         using var client = await GetClientAsync();
@@ -170,4 +195,25 @@ public class SdkDataProvider(MacroSutraClientFactory clientFactory, MauiAuthProv
 
     public Task<Subscription> CancelSubscriptionAsync(string id, string accountId) =>
         throw new NotSupportedException("Subscription management via SDK not yet implemented.");
+
+    // Strategy evaluation
+    public async Task<StrategyEvaluationResult> EvaluateStrategyAsync(string id, string accountId)
+    {
+        using var client = await GetClientAsync();
+        var sdkResult = await client.Strategies.EvaluateStrategyAsync(id);
+        return new StrategyEvaluationResult
+        {
+            WouldTrigger = sdkResult.WouldTrigger,
+            EvaluatedUtc = sdkResult.EvaluatedUtc,
+            Conditions = sdkResult.Conditions.Select(c => new ConditionResult
+            {
+                ConditionId = c.ConditionId,
+                ConditionType = Enum.TryParse<ConditionType>(c.ConditionType, true, out var ct) ? ct : ConditionType.Price,
+                CurrentValue = c.CurrentValue,
+                TargetValue = c.TargetValue,
+                Operator = Enum.TryParse<ConditionOperator>(c.Operator, true, out var op) ? op : ConditionOperator.GreaterThan,
+                Passed = c.Passed
+            }).ToList()
+        };
+    }
 }

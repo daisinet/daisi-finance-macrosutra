@@ -8,11 +8,13 @@ namespace MacroSutra.Brokers;
 /// </summary>
 public class BrokerageProviderFactory(IServiceProvider serviceProvider)
 {
-    public IBrokerageProvider GetProvider(BrokerageProvider provider)
+    public virtual IBrokerageProvider GetProvider(BrokerageProvider provider)
     {
         return provider switch
         {
             Core.Enums.BrokerageProvider.Paper => serviceProvider.GetRequiredService<PaperBrokerageProvider>(),
+            Core.Enums.BrokerageProvider.Alpaca => serviceProvider.GetRequiredService<AlpacaBrokerageProvider>(),
+            Core.Enums.BrokerageProvider.Webull => serviceProvider.GetRequiredService<WebullBrokerageProvider>(),
             _ => throw new NotSupportedException($"Brokerage provider '{provider}' is not yet supported.")
         };
     }

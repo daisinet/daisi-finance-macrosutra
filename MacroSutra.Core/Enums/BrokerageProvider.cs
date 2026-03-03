@@ -8,5 +8,6 @@ public enum BrokerageProvider
     Paper = 0,
     Alpaca = 1,
     InteractiveBrokers = 2,
-    TDAmeritrade = 3
+    TDAmeritrade = 3,
+    Webull = 4
 }

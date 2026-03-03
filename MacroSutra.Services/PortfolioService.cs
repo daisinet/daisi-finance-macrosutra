@@ -1,3 +1,5 @@
+using MacroSutra.Brokers;
+using MacroSutra.Core.Enums;
 using MacroSutra.Core.Models;
 using MacroSutra.Data;
 
@@ -6,7 +8,7 @@ namespace MacroSutra.Services;
 /// <summary>
 /// BrokerageAccount management and position sync.
 /// </summary>
-public class PortfolioService(MacroSutraCosmo cosmo)
+public class PortfolioService(MacroSutraCosmo cosmo, BrokerageProviderFactory providerFactory)
 {
     // ── Brokerage Accounts ──
 
@@ -51,6 +53,27 @@ public class PortfolioService(MacroSutraCosmo cosmo)
     public virtual async Task<Position> SyncPositionAsync(Position position)
     {
         return await cosmo.UpdatePositionAsync(position);
+    }
+
+    /// <summary>
+    /// Validates credentials with the provider and creates the account if valid.
+    /// </summary>
+    public virtual async Task<BrokerageAccount> ValidateAndCreateBrokerageAccountAsync(BrokerageAccount account)
+    {
+        ValidateBrokerageAccount(account);
+
+        if (account.Provider != BrokerageProvider.Paper)
+        {
+            if (string.IsNullOrWhiteSpace(account.CredentialData))
+                throw new InvalidOperationException("Credentials are required for non-Paper accounts.");
+
+            var provider = providerFactory.GetProvider(account.Provider);
+            var isValid = await provider.ValidateCredentialsAsync(account.CredentialData);
+            if (!isValid)
+                throw new InvalidOperationException("Credential validation failed. Please check your API keys.");
+        }
+
+        return await cosmo.CreateBrokerageAccountAsync(account);
     }
 
     internal static void ValidateBrokerageAccount(BrokerageAccount account)

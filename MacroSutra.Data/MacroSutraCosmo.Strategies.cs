@@ -71,4 +71,26 @@ public partial class MacroSutraCosmo
         var container = await GetContainerAsync(StrategiesContainerName);
         await container.DeleteItemAsync<TradingStrategy>(id, new PartitionKey(accountId));
     }
+
+    /// <summary>
+    /// Gets all active strategies across all accounts (cross-partition query).
+    /// Used by the StrategyEvaluationService background service.
+    /// </summary>
+    public virtual async Task<List<TradingStrategy>> GetAllActiveStrategiesAsync()
+    {
+        var container = await GetContainerAsync(StrategiesContainerName);
+
+        var sql = "SELECT * FROM c WHERE c.Type = 'TradingStrategy' AND c.IsActive = true";
+        var query = new QueryDefinition(sql);
+
+        var options = new QueryRequestOptions { MaxConcurrency = -1 };
+        var results = new List<TradingStrategy>();
+        using var iterator = container.GetItemQueryIterator<TradingStrategy>(query, requestOptions: options);
+        while (iterator.HasMoreResults)
+        {
+            var response = await iterator.ReadNextAsync();
+            results.AddRange(response);
+        }
+        return results;
+    }
 }

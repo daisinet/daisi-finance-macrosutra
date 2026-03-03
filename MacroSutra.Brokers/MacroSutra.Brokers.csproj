@@ -7,10 +7,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="MacroSutra.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\MacroSutra.Core\MacroSutra.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Alpaca.Markets" Version="7.*" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.3" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.3" />
   </ItemGroup>
 

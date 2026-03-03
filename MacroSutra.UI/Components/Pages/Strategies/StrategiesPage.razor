@@ -13,6 +13,8 @@
         <MudTh>Name</MudTh>
         <MudTh>Symbols</MudTh>
         <MudTh>Conditions</MudTh>
+        <MudTh>Last Evaluated</MudTh>
+        <MudTh>Last Triggered</MudTh>
         <MudTh>Active</MudTh>
         <MudTh>Public</MudTh>
         <MudTh>Actions</MudTh>
@@ -27,12 +29,33 @@
         </MudTd>
         <MudTd>@context.Conditions.Count</MudTd>
         <MudTd>
+            @if (context.LastEvaluatedUtc.HasValue)
+            {
+                <MudText Typo="Typo.caption">@context.LastEvaluatedUtc.Value.ToString("MMM dd, HH:mm")</MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary">—</MudText>
+            }
+        </MudTd>
+        <MudTd>
+            @if (context.LastTriggeredUtc.HasValue)
+            {
+                <MudText Typo="Typo.caption">@context.LastTriggeredUtc.Value.ToString("MMM dd, HH:mm")</MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary">—</MudText>
+            }
+        </MudTd>
+        <MudTd>
             <MudSwitch T="bool" Value="@context.IsActive" ValueChanged="@(v => ToggleActive(context, v))" Color="Color.Success" />
         </MudTd>
         <MudTd>
             <MudIcon Icon="@(context.IsPublic ? Icons.Material.Filled.Public : Icons.Material.Filled.Lock)" />
         </MudTd>
         <MudTd>
+            <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" OnClick="@(() => TestNow(context))" Size="Size.Small" Title="Test Now" Color="Color.Info" />
             <MudIconButton Icon="@Icons.Material.Filled.Edit" Href="@($"/strategies/{context.id}")" Size="Size.Small" />
             <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteStrategy(context))" Size="Size.Small" Color="Color.Error" />
         </MudTd>
@@ -83,5 +106,21 @@
             await LoadStrategies();
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task TestNow(TradingStrategy strategy)
+    {
+        try
+        {
+            var result = await Data.EvaluateStrategyAsync(strategy.id, AccountId);
+            var passed = result.Conditions.Count(c => c.Passed);
+            var total = result.Conditions.Count;
+            var severity = result.WouldTrigger ? Severity.Success : Severity.Info;
+            var msg = result.WouldTrigger
+                ? $"Would trigger! {passed}/{total} conditions passed."
+                : $"Would NOT trigger. {passed}/{total} conditions passed.";
+            Snackbar.Add(msg, severity);
+        }
+        catch (Exception ex) { Snackbar.Add($"Evaluation failed: {ex.Message}", Severity.Error); }
     }
 }

@@ -4,6 +4,16 @@ using MacroSutra.Core.Models;
 namespace MacroSutra.UI.Services;
 
 /// <summary>
+/// Result of syncing a brokerage account.
+/// </summary>
+public class SyncResultDto
+{
+    public int PositionCount { get; set; }
+    public decimal? Balance { get; set; }
+    public string? Error { get; set; }
+}
+
+/// <summary>
 /// Unified data access abstraction.
 /// Web implements via service layer directly; MAUI implements via SDK HTTP client.
 /// </summary>
@@ -33,7 +43,14 @@ public interface IDataProvider
     // Portfolio
     Task<List<BrokerageAccount>> GetBrokerageAccountsAsync(string accountId, bool activeOnly = false);
     Task<BrokerageAccount> CreateBrokerageAccountAsync(BrokerageAccount account);
+    Task<BrokerageAccount> UpdateBrokerageAccountAsync(BrokerageAccount account);
+    Task<BrokerageAccount> DeactivateBrokerageAccountAsync(string id, string accountId);
+    Task<BrokerageAccount> ValidateAndLinkBrokerageAccountAsync(BrokerageAccount account);
     Task<List<Position>> GetPositionsAsync(string accountId, string? brokerageAccountId = null);
+
+    // Sync
+    Task<SyncResultDto> SyncBrokerageAccountAsync(string id, string accountId);
+    Task<Dictionary<string, SyncResultDto>> SyncAllBrokerageAccountsAsync(string accountId);
 
     // Daisinet team import
     Task<List<DaisinetTeamMember>> GetDaisinetTeamMembersAsync();
@@ -42,4 +59,7 @@ public interface IDataProvider
     Task<List<Subscription>> GetSubscriptionsAsync(string accountId);
     Task<Subscription> CreateSubscriptionAsync(Subscription subscription);
     Task<Subscription> CancelSubscriptionAsync(string id, string accountId);
+
+    // Strategy evaluation
+    Task<StrategyEvaluationResult> EvaluateStrategyAsync(string id, string accountId);
 }

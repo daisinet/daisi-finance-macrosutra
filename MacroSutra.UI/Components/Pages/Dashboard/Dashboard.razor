@@ -5,8 +5,19 @@
 <MudText Typo="Typo.h4" Class="mb-4">Dashboard</MudText>
 
 <MudGrid>
+    <!-- Portfolio Value -->
+    <MudItem xs="12" md="3">
+        <MudCard>
+            <MudCardContent>
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Portfolio Value</MudText>
+                <MudText Typo="Typo.h5">@totalBalance.ToString("C")</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@activeAccountCount account(s)</MudText>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
     <!-- Portfolio Summary -->
-    <MudItem xs="12" md="4">
+    <MudItem xs="12" md="3">
         <MudCard>
             <MudCardContent>
                 <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Total Positions</MudText>
@@ -15,7 +26,7 @@
         </MudCard>
     </MudItem>
 
-    <MudItem xs="12" md="4">
+    <MudItem xs="12" md="3">
         <MudCard>
             <MudCardContent>
                 <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Active Strategies</MudText>
@@ -24,11 +35,28 @@
         </MudCard>
     </MudItem>
 
-    <MudItem xs="12" md="4">
+    <MudItem xs="12" md="3">
         <MudCard>
             <MudCardContent>
                 <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Recent Trades</MudText>
                 <MudText Typo="Typo.h5">@recentTrades.Count</MudText>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <!-- Engine Status -->
+    <MudItem xs="12">
+        <MudCard>
+            <MudCardContent Class="d-flex align-center gap-4">
+                <MudChip T="string" Color="@(engineRunning ? Color.Success : Color.Default)" Size="Size.Small">
+                    @(engineRunning ? "Engine Running" : "Engine Stopped")
+                </MudChip>
+                @if (lastEvaluation.HasValue)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Last evaluation: @lastEvaluation.Value.ToString("MMM dd, HH:mm:ss") UTC
+                    </MudText>
+                }
             </MudCardContent>
         </MudCard>
     </MudItem>
@@ -104,9 +132,18 @@
     [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
     [Inject] private IDataProvider Data { get; set; } = default!;
 
+    private List<BrokerageAccount> brokerageAccounts = new();
     private List<TradingStrategy> strategies = new();
     private List<Trade> recentTrades = new();
     private List<MacroSutra.Core.Models.Position> positions = new();
+    private bool engineRunning;
+    private DateTime? lastEvaluation;
+
+    private decimal totalBalance => brokerageAccounts
+        .Where(a => a.IsActive && a.CachedBalance.HasValue)
+        .Sum(a => a.CachedBalance!.Value);
+
+    private int activeAccountCount => brokerageAccounts.Count(a => a.IsActive);
 
     protected override async Task OnParametersSetAsync()
     {
@@ -114,9 +151,22 @@
 
         try
         {
+            brokerageAccounts = await Data.GetBrokerageAccountsAsync(AccountId, activeOnly: true);
             strategies = await Data.GetStrategiesAsync(AccountId);
             recentTrades = await Data.GetTradesAsync(AccountId);
             positions = await Data.GetPositionsAsync(AccountId);
+
+            // Infer engine status from strategy evaluation timestamps
+            var latestEval = strategies
+                .Where(s => s.LastEvaluatedUtc.HasValue)
+                .Select(s => s.LastEvaluatedUtc!.Value)
+                .DefaultIfEmpty()
+                .Max();
+            if (latestEval != default)
+            {
+                lastEvaluation = latestEval;
+                engineRunning = (DateTime.UtcNow - latestEval).TotalMinutes < 5;
+            }
         }
         catch { /* Cosmos not configured yet */ }
     }

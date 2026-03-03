@@ -35,4 +35,12 @@ public class StrategyClient(HttpClient http)
         var response = await http.DeleteAsync($"/api/strategies/{id}");
         response.EnsureSuccessStatusCode();
     }
+
+    public async Task<StrategyEvaluationResult> EvaluateStrategyAsync(string id)
+    {
+        var response = await http.PostAsync($"/api/strategies/{id}/evaluate", null);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<StrategyEvaluationResult>(MacroSutraClient.JsonOptions)
+            ?? new StrategyEvaluationResult();
+    }
 }

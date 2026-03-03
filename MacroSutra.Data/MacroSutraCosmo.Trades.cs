@@ -76,4 +76,29 @@ public partial class MacroSutraCosmo
         var response = await container.UpsertItemAsync(trade, new PartitionKey(trade.AccountId));
         return response.Resource;
     }
+
+    /// <summary>
+    /// Gets all trades with open status (Pending, Submitted, PartiallyFilled) across all accounts.
+    /// Used by the OrderStatusTracker background service.
+    /// </summary>
+    public virtual async Task<List<Trade>> GetOpenTradesAsync()
+    {
+        var container = await GetContainerAsync(TradesContainerName);
+
+        var sql = "SELECT * FROM c WHERE c.Type = 'Trade' AND (c.Status = @pending OR c.Status = @submitted OR c.Status = @partial)";
+        var query = new QueryDefinition(sql)
+            .WithParameter("@pending", (int)TradeStatus.Pending)
+            .WithParameter("@submitted", (int)TradeStatus.Submitted)
+            .WithParameter("@partial", (int)TradeStatus.PartiallyFilled);
+
+        var options = new QueryRequestOptions { MaxConcurrency = -1 };
+        var results = new List<Trade>();
+        using var iterator = container.GetItemQueryIterator<Trade>(query, requestOptions: options);
+        while (iterator.HasMoreResults)
+        {
+            var response = await iterator.ReadNextAsync();
+            results.AddRange(response);
+        }
+        return results;
+    }
 }

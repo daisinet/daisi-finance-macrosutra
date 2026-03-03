@@ -19,4 +19,25 @@ public class PortfolioClient(HttpClient http)
 
         return await http.GetFromJsonAsync<List<Position>>(url, MacroSutraClient.JsonOptions) ?? new();
     }
+
+    public async Task<SyncResult> SyncAccountAsync(string brokerageAccountId)
+    {
+        var response = await http.PostAsync($"/api/portfolio/accounts/{Uri.EscapeDataString(brokerageAccountId)}/sync", null);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<SyncResult>(MacroSutraClient.JsonOptions) ?? new();
+    }
+
+    public async Task<Dictionary<string, SyncResult>> SyncAllAsync()
+    {
+        var response = await http.PostAsync("/api/portfolio/sync", null);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<Dictionary<string, SyncResult>>(MacroSutraClient.JsonOptions) ?? new();
+    }
+}
+
+public class SyncResult
+{
+    public int PositionCount { get; set; }
+    public decimal? Balance { get; set; }
+    public string? Error { get; set; }
 }

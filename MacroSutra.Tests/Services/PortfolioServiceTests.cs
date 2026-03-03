@@ -1,7 +1,9 @@
+using MacroSutra.Brokers;
 using MacroSutra.Core.Models;
 using MacroSutra.Data;
 using MacroSutra.Services;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Moq;
 
 namespace MacroSutra.Tests.Services;
@@ -11,7 +13,11 @@ public class PortfolioServiceTests
     private static (PortfolioService service, Mock<MacroSutraCosmo> cosmo) CreateSut()
     {
         var cosmo = new Mock<MacroSutraCosmo>(Mock.Of<IConfiguration>(), "Cosmo:ConnectionString");
-        var service = new PortfolioService(cosmo.Object);
+        var services = new ServiceCollection();
+        services.AddSingleton<PaperBrokerageProvider>();
+        var sp = services.BuildServiceProvider();
+        var factory = new BrokerageProviderFactory(sp);
+        var service = new PortfolioService(cosmo.Object, factory);
         return (service, cosmo);
     }
 

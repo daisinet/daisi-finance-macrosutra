@@ -13,4 +13,10 @@ public interface IBrokerageProvider
     Task<string> PlaceOrderAsync(string credentialRef, Trade trade);
     Task<Trade> GetOrderStatusAsync(string credentialRef, string externalOrderId);
     Task<decimal> GetAccountBalanceAsync(string credentialRef);
+
+    /// <summary>
+    /// Attempts to refresh credentials (e.g. OAuth token refresh).
+    /// Returns updated credential JSON if refreshed, null if no refresh needed or not supported.
+    /// </summary>
+    Task<string?> TryRefreshCredentialsAsync(string credentialRef) => Task.FromResult<string?>(null);
 }

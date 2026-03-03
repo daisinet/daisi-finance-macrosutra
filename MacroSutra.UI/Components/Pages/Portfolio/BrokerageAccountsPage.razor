@@ -4,22 +4,55 @@
 
 <MudText Typo="Typo.h4" Class="mb-4">Brokerage Accounts</MudText>
 
-<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => showAdd = true)" Class="mb-4">
-    <MudIcon Icon="@Icons.Material.Filled.Add" Class="me-1" /> Link Account
-</MudButton>
+<MudStack Row="true" Class="mb-4">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => OpenAddDialog())">
+        <MudIcon Icon="@Icons.Material.Filled.Add" Class="me-1" /> Link Account
+    </MudButton>
+    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="SyncAll" Disabled="@syncingAll">
+        @if (syncingAll)
+        {
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-1" />
+        }
+        <MudIcon Icon="@Icons.Material.Filled.Sync" Class="me-1" /> Sync All
+    </MudButton>
+</MudStack>
 
 <MudTable Items="@accounts" Hover="true" Striped="true" Dense="true" Loading="@loading">
     <HeaderContent>
         <MudTh>Name</MudTh>
         <MudTh>Provider</MudTh>
-        <MudTh>Active</MudTh>
-        <MudTh>Created</MudTh>
+        <MudTh>Mode</MudTh>
+        <MudTh>Balance</MudTh>
+        <MudTh>Last Sync</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh>Actions</MudTh>
     </HeaderContent>
     <RowTemplate>
         <MudTd>@context.Name</MudTd>
         <MudTd>@context.Provider</MudTd>
-        <MudTd><MudIcon Icon="@(context.IsActive ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)" Color="@(context.IsActive ? Color.Success : Color.Error)" /></MudTd>
-        <MudTd>@context.CreatedUtc.ToString("MMM dd, yyyy")</MudTd>
+        <MudTd>
+            <MudChip T="string" Size="Size.Small" Color="@(context.IsPaperTrading || context.Provider == BrokerageProvider.Paper ? Color.Warning : Color.Success)">
+                @(context.IsPaperTrading || context.Provider == BrokerageProvider.Paper ? "Paper" : "Live")
+            </MudChip>
+        </MudTd>
+        <MudTd>@(context.CachedBalance?.ToString("C") ?? "—")</MudTd>
+        <MudTd>@(context.LastSyncUtc?.ToString("MMM dd, HH:mm") ?? "Never")</MudTd>
+        <MudTd>
+            <MudIcon Icon="@(context.IsActive ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                     Color="@(context.IsActive ? Color.Success : Color.Error)" />
+        </MudTd>
+        <MudTd>
+            @if (context.IsActive && context.Provider != BrokerageProvider.Paper)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Sync" Size="Size.Small" Title="Sync Now"
+                               OnClick="@(() => SyncAccount(context))" Disabled="@syncingAccounts.Contains(context.id)" />
+            }
+            @if (context.IsActive)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                               Title="Deactivate" OnClick="@(() => DeactivateAccount(context))" />
+            }
+        </MudTd>
     </RowTemplate>
 </MudTable>
 
@@ -27,16 +60,56 @@
     <TitleContent>Link Brokerage Account</TitleContent>
     <DialogContent>
         <MudTextField @bind-Value="newAccount.Name" Label="Account Name" Required="true" Class="mb-3" />
-        <MudSelect @bind-Value="newAccount.Provider" Label="Provider" Class="mb-3">
-            @foreach (var p in Enum.GetValues<BrokerageProvider>())
+        <MudSelect T="BrokerageProvider" Value="newAccount.Provider" ValueChanged="@OnProviderChanged" Label="Provider" Class="mb-3">
+            @foreach (var p in new[] { BrokerageProvider.Paper, BrokerageProvider.Alpaca, BrokerageProvider.Webull })
             {
                 <MudSelectItem Value="@p">@p</MudSelectItem>
             }
         </MudSelect>
+
+        @if (newAccount.Provider == BrokerageProvider.Alpaca)
+        {
+            <MudTextField @bind-Value="alpacaApiKey" Label="API Key" Required="true" Class="mb-3" />
+            <MudTextField @bind-Value="alpacaSecretKey" Label="Secret Key" Required="true" Class="mb-3"
+                          InputType="InputType.Password" />
+            <MudSwitch @bind-Value="isPaperTrading" Label="Paper Trading" Color="Color.Primary" Class="mb-3" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Get your API keys from <MudLink Href="https://app.alpaca.markets" Target="_blank">app.alpaca.markets</MudLink>
+            </MudText>
+        }
+        else if (newAccount.Provider == BrokerageProvider.Webull)
+        {
+            <MudTextField @bind-Value="webullAppKey" Label="App Key" Required="true" Class="mb-3" />
+            <MudTextField @bind-Value="webullAppSecret" Label="App Secret" Required="true" Class="mb-3"
+                          InputType="InputType.Password" />
+            <MudTextField @bind-Value="webullAccessToken" Label="Access Token" Required="true" Class="mb-3"
+                          InputType="InputType.Password" />
+            <MudTextField @bind-Value="webullRefreshToken" Label="Refresh Token" Class="mb-3"
+                          InputType="InputType.Password" />
+            <MudSwitch @bind-Value="isPaperTrading" Label="Sandbox Mode" Color="Color.Primary" Class="mb-3" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Get your credentials from <MudLink Href="https://www.webull.com/open-api" Target="_blank">developer.webull.com</MudLink>
+            </MudText>
+        }
+
+        @if (!string.IsNullOrEmpty(validationError))
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-2">@validationError</MudAlert>
+        }
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => showAdd = false)">Cancel</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddAccount">Save</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddAccount" Disabled="@validating">
+            @if (validating)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-1" />
+                <span>Validating...</span>
+            }
+            else
+            {
+                <span>Save</span>
+            }
+        </MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -50,6 +123,23 @@
     private BrokerageAccount newAccount = new();
     private bool loading = true;
     private bool showAdd;
+    private bool validating;
+    private bool syncingAll;
+    private HashSet<string> syncingAccounts = new();
+    private string? validationError;
+
+    // Alpaca fields
+    private string alpacaApiKey = "";
+    private string alpacaSecretKey = "";
+
+    // Webull fields
+    private string webullAppKey = "";
+    private string webullAppSecret = "";
+    private string webullAccessToken = "";
+    private string webullRefreshToken = "";
+
+    // Shared
+    private bool isPaperTrading;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -65,16 +155,125 @@
         finally { loading = false; }
     }
 
+    private void OpenAddDialog()
+    {
+        newAccount = new();
+        alpacaApiKey = "";
+        alpacaSecretKey = "";
+        webullAppKey = "";
+        webullAppSecret = "";
+        webullAccessToken = "";
+        webullRefreshToken = "";
+        isPaperTrading = false;
+        validationError = null;
+        showAdd = true;
+    }
+
+    private void OnProviderChanged(BrokerageProvider provider)
+    {
+        newAccount.Provider = provider;
+        validationError = null;
+        StateHasChanged();
+    }
+
     private async Task AddAccount()
     {
+        validationError = null;
+        validating = true;
+        StateHasChanged();
+
         try
         {
             newAccount.AccountId = AccountId;
             newAccount.UserId = CurrentUser?.id ?? "";
-            await Data.CreateBrokerageAccountAsync(newAccount);
-            Snackbar.Add("Account linked.", Severity.Success);
+            newAccount.IsPaperTrading = isPaperTrading;
+
+            // Build credential JSON based on provider
+            if (newAccount.Provider == BrokerageProvider.Alpaca)
+            {
+                newAccount.CredentialData = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    ApiKey = alpacaApiKey,
+                    SecretKey = alpacaSecretKey,
+                    IsPaperTrading = isPaperTrading
+                });
+            }
+            else if (newAccount.Provider == BrokerageProvider.Webull)
+            {
+                newAccount.CredentialData = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    AppKey = webullAppKey,
+                    AppSecret = webullAppSecret,
+                    AccessToken = webullAccessToken,
+                    RefreshToken = webullRefreshToken,
+                    IsPaperTrading = isPaperTrading
+                });
+            }
+
+            if (newAccount.Provider == BrokerageProvider.Paper)
+            {
+                await Data.CreateBrokerageAccountAsync(newAccount);
+            }
+            else
+            {
+                await Data.ValidateAndLinkBrokerageAccountAsync(newAccount);
+            }
+
+            Snackbar.Add("Account linked successfully.", Severity.Success);
             showAdd = false;
-            newAccount = new();
+            await LoadAccounts();
+        }
+        catch (Exception ex)
+        {
+            validationError = ex.Message;
+        }
+        finally
+        {
+            validating = false;
+        }
+    }
+
+    private async Task SyncAccount(BrokerageAccount account)
+    {
+        syncingAccounts.Add(account.id);
+        StateHasChanged();
+
+        try
+        {
+            var result = await Data.SyncBrokerageAccountAsync(account.id, AccountId);
+            if (result.Error != null)
+                Snackbar.Add($"Sync error: {result.Error}", Severity.Warning);
+            else
+                Snackbar.Add($"Synced {result.PositionCount} positions. Balance: {result.Balance:C}", Severity.Success);
+            await LoadAccounts();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        finally { syncingAccounts.Remove(account.id); }
+    }
+
+    private async Task SyncAll()
+    {
+        syncingAll = true;
+        StateHasChanged();
+
+        try
+        {
+            var results = await Data.SyncAllBrokerageAccountsAsync(AccountId);
+            var errors = results.Values.Count(r => r.Error != null);
+            var synced = results.Count - errors;
+            Snackbar.Add($"Synced {synced} account(s){(errors > 0 ? $", {errors} error(s)" : "")}.", errors > 0 ? Severity.Warning : Severity.Success);
+            await LoadAccounts();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        finally { syncingAll = false; }
+    }
+
+    private async Task DeactivateAccount(BrokerageAccount account)
+    {
+        try
+        {
+            await Data.DeactivateBrokerageAccountAsync(account.id, AccountId);
+            Snackbar.Add("Account deactivated.", Severity.Info);
             await LoadAccounts();
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }

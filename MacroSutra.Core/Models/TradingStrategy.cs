@@ -35,4 +35,14 @@ public class TradingStrategy
     public bool IsPublic { get; set; }
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedUtc { get; set; }
+
+    /// <summary>
+    /// When the evaluation engine last checked this strategy.
+    /// </summary>
+    public DateTime? LastEvaluatedUtc { get; set; }
+
+    /// <summary>
+    /// When this strategy's conditions last triggered and executed actions.
+    /// </summary>
+    public DateTime? LastTriggeredUtc { get; set; }
 }

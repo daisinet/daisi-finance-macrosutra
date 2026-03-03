@@ -11,4 +11,6 @@ public class TradingStrategy
     public bool IsActive { get; set; }
     public bool IsPublic { get; set; }
     public DateTime CreatedUtc { get; set; }
+    public DateTime? LastEvaluatedUtc { get; set; }
+    public DateTime? LastTriggeredUtc { get; set; }
 }

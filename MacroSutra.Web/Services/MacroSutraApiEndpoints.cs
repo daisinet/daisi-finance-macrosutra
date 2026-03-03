@@ -1,3 +1,4 @@
+using System.Text.Json;
 using MacroSutra.Core.Enums;
 using MacroSutra.Core.Models;
 using MacroSutra.Services;
@@ -71,6 +72,15 @@ public static class MacroSutraApiEndpoints
             return Results.NoContent();
         });
 
+        api.MapPost("/strategies/{id}/evaluate", async (string id, StrategyService svc, StrategyEvaluationService evalService, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            var strategy = await svc.GetStrategyAsync(id, accountId!);
+            if (strategy == null) return Results.NotFound();
+            var result = await evalService.EvaluateSingleAsync(strategy);
+            return Results.Ok(result);
+        });
+
         // ── Trades ──
 
         api.MapGet("/trades", async (StrategyService strategySvc, TradeService svc, HttpContext ctx) =>
@@ -109,6 +119,40 @@ public static class MacroSutraApiEndpoints
             string? brokerageAccountId = ctx.Request.Query["brokerageAccountId"].FirstOrDefault();
             var positions = await svc.GetPositionsAsync(accountId!, brokerageAccountId);
             return Results.Ok(positions);
+        });
+
+        api.MapPost("/portfolio/accounts", async ([FromBody] BrokerageAccount account, PortfolioService svc, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            account.AccountId = accountId!;
+            var created = await svc.ValidateAndCreateBrokerageAccountAsync(account);
+            // Strip credentials from response
+            created.CredentialData = "";
+            created.CredentialRef = "";
+            return Results.Created($"/api/portfolio/accounts/{created.id}", created);
+        });
+
+        api.MapPost("/portfolio/accounts/{id}/sync", async (string id, PortfolioService portfolioSvc, PositionSyncService syncSvc, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            var account = await portfolioSvc.GetBrokerageAccountAsync(id, accountId!);
+            if (account == null) return Results.NotFound();
+            var result = await syncSvc.SyncAccountAsync(account);
+            return Results.Ok(result);
+        });
+
+        api.MapPost("/portfolio/sync", async (PositionSyncService syncSvc, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            var results = await syncSvc.SyncAllAccountsAsync(accountId!);
+            return Results.Ok(results);
+        });
+
+        api.MapDelete("/portfolio/accounts/{id}", async (string id, PortfolioService svc, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            await svc.DeactivateBrokerageAccountAsync(id, accountId!);
+            return Results.NoContent();
         });
     }
 }

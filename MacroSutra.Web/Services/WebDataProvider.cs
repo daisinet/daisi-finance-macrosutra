@@ -4,6 +4,7 @@ using MacroSutra.Core.Enums;
 using MacroSutra.Core.Models;
 using MacroSutra.Services;
 using MacroSutra.UI.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MacroSutra.Web.Services;
 
@@ -16,8 +17,10 @@ public class WebDataProvider(
     StrategyService strategyService,
     TradeService tradeService,
     PortfolioService portfolioService,
+    PositionSyncService syncService,
     SubscriptionService subscriptionService,
-    AccountClientFactory accountClientFactory) : IDataProvider
+    AccountClientFactory accountClientFactory,
+    IServiceProvider serviceProvider) : IDataProvider
 {
     // Users
     public async Task<MacroSutraUser> CreateUserAsync(MacroSutraUser user) =>
@@ -74,8 +77,34 @@ public class WebDataProvider(
     public async Task<BrokerageAccount> CreateBrokerageAccountAsync(BrokerageAccount account) =>
         await portfolioService.CreateBrokerageAccountAsync(account);
 
+    public async Task<BrokerageAccount> UpdateBrokerageAccountAsync(BrokerageAccount account) =>
+        await portfolioService.UpdateBrokerageAccountAsync(account);
+
+    public async Task<BrokerageAccount> DeactivateBrokerageAccountAsync(string id, string accountId) =>
+        await portfolioService.DeactivateBrokerageAccountAsync(id, accountId);
+
+    public async Task<BrokerageAccount> ValidateAndLinkBrokerageAccountAsync(BrokerageAccount account) =>
+        await portfolioService.ValidateAndCreateBrokerageAccountAsync(account);
+
     public async Task<List<Position>> GetPositionsAsync(string accountId, string? brokerageAccountId = null) =>
         await portfolioService.GetPositionsAsync(accountId, brokerageAccountId);
+
+    // Sync
+    public async Task<SyncResultDto> SyncBrokerageAccountAsync(string id, string accountId)
+    {
+        var account = await portfolioService.GetBrokerageAccountAsync(id, accountId)
+            ?? throw new InvalidOperationException("Brokerage account not found.");
+        var result = await syncService.SyncAccountAsync(account);
+        return new SyncResultDto { PositionCount = result.PositionCount, Balance = result.Balance, Error = result.Error };
+    }
+
+    public async Task<Dictionary<string, SyncResultDto>> SyncAllBrokerageAccountsAsync(string accountId)
+    {
+        var results = await syncService.SyncAllAccountsAsync(accountId);
+        return results.ToDictionary(
+            kvp => kvp.Key,
+            kvp => new SyncResultDto { PositionCount = kvp.Value.PositionCount, Balance = kvp.Value.Balance, Error = kvp.Value.Error });
+    }
 
     // Daisinet team import
     public async Task<List<DaisinetTeamMember>> GetDaisinetTeamMembersAsync()
@@ -104,4 +133,13 @@ public class WebDataProvider(
 
     public async Task<Subscription> CancelSubscriptionAsync(string id, string accountId) =>
         await subscriptionService.CancelSubscriptionAsync(id, accountId);
+
+    // Strategy evaluation
+    public async Task<StrategyEvaluationResult> EvaluateStrategyAsync(string id, string accountId)
+    {
+        var strategy = await strategyService.GetStrategyAsync(id, accountId)
+            ?? throw new InvalidOperationException("Strategy not found.");
+        var evalService = serviceProvider.GetRequiredService<StrategyEvaluationService>();
+        return await evalService.EvaluateSingleAsync(strategy);
+    }
 }

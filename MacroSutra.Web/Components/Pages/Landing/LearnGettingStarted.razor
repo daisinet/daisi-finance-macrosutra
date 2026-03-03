@@ -21,11 +21,35 @@
         <p>Connect your brokerage to trade and track positions through MacroSutra:</p>
         <ol>
             <li>Navigate to <strong>Portfolio &rarr; Brokerage Accounts</strong> in the sidebar.</li>
-            <li>Click <strong>Add Account</strong> and select your broker.</li>
-            <li>Complete the OAuth authorization flow or enter your API credentials.</li>
-            <li>MacroSutra will sync your positions and begin tracking trades in real time.</li>
+            <li>Click <strong>Link Account</strong> and select your broker.</li>
+            <li>Enter your API credentials (see provider-specific instructions below).</li>
+            <li>MacroSutra validates your credentials before saving.</li>
+            <li>Click <strong>Sync Now</strong> to fetch your positions and balance.</li>
         </ol>
         <p>You can connect multiple accounts from different brokers. All positions are aggregated into a single portfolio view.</p>
+
+        <h3 class="mt-3">Supported Brokerages</h3>
+
+        <h4>Paper Trading</h4>
+        <p>No credentials required. Use Paper accounts for testing strategies without risking real capital. Paper accounts return mock data with a $100,000 starting balance.</p>
+
+        <h4>Alpaca</h4>
+        <ol>
+            <li>Create an account at <a href="https://app.alpaca.markets" target="_blank">app.alpaca.markets</a>.</li>
+            <li>Go to your dashboard and generate an <strong>API Key</strong> and <strong>Secret Key</strong>.</li>
+            <li>In MacroSutra, select <strong>Alpaca</strong> as the provider and enter your keys.</li>
+            <li>Toggle <strong>Paper Trading</strong> on to use Alpaca's sandbox environment, or leave it off for live trading.</li>
+        </ol>
+
+        <h4>Webull</h4>
+        <ol>
+            <li>Apply for API access at <a href="https://www.webull.com/open-api" target="_blank">developer.webull.com</a>.</li>
+            <li>Create an app and obtain your <strong>App Key</strong> and <strong>App Secret</strong>.</li>
+            <li>Generate an <strong>Access Token</strong> and optional <strong>Refresh Token</strong> via the OAuth flow.</li>
+            <li>In MacroSutra, select <strong>Webull</strong> as the provider and enter all credentials.</li>
+            <li>Toggle <strong>Sandbox Mode</strong> on to use Webull's test environment.</li>
+        </ol>
+        <p>Webull tokens expire periodically. MacroSutra automatically refreshes tokens using your refresh token when syncing.</p>
 
         <h2 id="strategies" class="mt-4">3. Create Your First Strategy</h2>
         <p>Strategies in MacroSutra are built from three components:</p>
@@ -44,6 +68,54 @@
             <li>Choose a target brokerage account for trade execution.</li>
             <li>Save the strategy. You can activate it immediately or test with paper trading first.</li>
         </ol>
+
+        <h2 id="execution" class="mt-4">How Strategies Execute</h2>
+        <p>Once a strategy is activated, MacroSutra's evaluation engine automatically monitors and executes it:</p>
+
+        <h3 class="mt-3">Evaluation Cycle</h3>
+        <p>A background service runs every <strong>60 seconds</strong> during US market hours (<strong>9:30 AM – 4:00 PM Eastern</strong>, Monday through Friday). Each cycle:</p>
+        <ol>
+            <li>Fetches live market data (price, volume, daily change) for all symbols across active strategies.</li>
+            <li>Retrieves historical price data for technical indicator calculations (SMA, EMA, RSI, MACD).</li>
+            <li>Evaluates each strategy's trigger conditions against the current data.</li>
+            <li>If all conditions pass (AND mode) or any condition passes (OR mode), executes the strategy's actions.</li>
+        </ol>
+        <p>Market data is cached for 30 seconds to avoid redundant API calls when multiple strategies share the same symbols.</p>
+
+        <h3 class="mt-3">Condition Types</h3>
+        <ul>
+            <li><strong>Price</strong> — Current market price of the symbol.</li>
+            <li><strong>Volume</strong> — Daily trading volume.</li>
+            <li><strong>Percent Change</strong> — Daily price change as a percentage.</li>
+            <li><strong>Moving Average (SMA)</strong> — Simple moving average over a configurable period.</li>
+            <li><strong>RSI</strong> — Relative Strength Index (0–100) over a configurable period. Default 14.</li>
+            <li><strong>MACD</strong> — MACD line value (fast EMA – slow EMA). Default 12/26/9.</li>
+        </ul>
+
+        <h3 class="mt-3">Operators</h3>
+        <p>Each condition compares the current value to a target using one of these operators:</p>
+        <ul>
+            <li><strong>Greater Than / Less Than</strong> — Standard comparison.</li>
+            <li><strong>Greater Than or Equal / Less Than or Equal</strong> — Inclusive comparison.</li>
+            <li><strong>Equal</strong> — Exact match.</li>
+            <li><strong>Crosses Above</strong> — Triggers when the value moves from below to above the target.</li>
+            <li><strong>Crosses Below</strong> — Triggers when the value moves from above to below the target.</li>
+        </ul>
+        <p><em>Note: CrossesAbove/CrossesBelow use in-memory tracking, so a server restart resets the crossing detection. The first evaluation after restart will not detect a crossing.</em></p>
+
+        <h3 class="mt-3">Quantity Resolution</h3>
+        <p>When a trade action fires, the quantity is resolved based on the sizing mode:</p>
+        <ul>
+            <li><strong>Shares</strong> — Trade the exact number of shares specified.</li>
+            <li><strong>Dollar Amount</strong> — Divide the dollar amount by the current price to calculate shares.</li>
+            <li><strong>Percent of Portfolio</strong> — Calculate shares based on a percentage of your account balance.</li>
+        </ul>
+
+        <h3 class="mt-3">Testing Strategies</h3>
+        <p>Before activating a strategy, use the <strong>Test Now</strong> button on the Strategies page or the <strong>Test Conditions</strong> button in the strategy editor. This evaluates your conditions against live market data and shows per-condition pass/fail results without placing any trades.</p>
+
+        <h3 class="mt-3">Order Tracking</h3>
+        <p>After an order is placed, a separate tracker checks order status every 30 seconds and updates the trade record when orders are filled, partially filled, cancelled, or rejected.</p>
 
         <h2 id="portfolio" class="mt-4">4. View Positions and Trades</h2>
         <p>Once your brokerage is linked and strategies are running:</p>

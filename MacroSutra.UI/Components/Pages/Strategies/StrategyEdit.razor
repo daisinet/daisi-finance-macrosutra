@@ -53,9 +53,44 @@
         </MudSelect>
 
         <MudSwitch @bind-Value="strategy.IsPublic" Label="Public (allow subscriptions)" Color="Color.Primary" Class="mb-3" />
+
+        @if (!isNew && testResult != null)
+        {
+            <MudDivider Class="my-4" />
+            <MudText Typo="Typo.subtitle1" Class="mb-2">
+                Test Results — @(testResult.WouldTrigger ? "Would Trigger" : "Would NOT Trigger")
+            </MudText>
+            <MudSimpleTable Dense="true" Hover="true">
+                <thead>
+                    <tr><th>Condition</th><th>Current</th><th>Operator</th><th>Target</th><th>Result</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var cr in testResult.Conditions)
+                    {
+                        <tr>
+                            <td>@cr.ConditionType</td>
+                            <td>@cr.CurrentValue.ToString("N2")</td>
+                            <td>@cr.Operator</td>
+                            <td>@cr.TargetValue.ToString("N2")</td>
+                            <td>
+                                <MudChip T="string" Size="Size.Small" Color="@(cr.Passed ? Color.Success : Color.Error)">
+                                    @(cr.Passed ? "Pass" : "Fail")
+                                </MudChip>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        }
     </MudCardContent>
     <MudCardActions>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">Save</MudButton>
+        @if (!isNew)
+        {
+            <MudButton Variant="Variant.Outlined" Color="Color.Info" OnClick="TestConditions" Class="ms-2">
+                Test Conditions
+            </MudButton>
+        }
         <MudButton Variant="Variant.Text" Href="/strategies">Cancel</MudButton>
     </MudCardActions>
 </MudCard>
@@ -69,6 +104,7 @@
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
 
     private TradingStrategy strategy = new();
+    private StrategyEvaluationResult? testResult;
     private bool isNew => string.IsNullOrEmpty(StrategyId);
 
     protected override async Task OnParametersSetAsync()
@@ -99,5 +135,16 @@
             Nav.NavigateTo("/strategies");
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task TestConditions()
+    {
+        try
+        {
+            testResult = await Data.EvaluateStrategyAsync(strategy.id, AccountId);
+            var severity = testResult.WouldTrigger ? Severity.Success : Severity.Info;
+            Snackbar.Add(testResult.WouldTrigger ? "Conditions would trigger!" : "Conditions would NOT trigger.", severity);
+        }
+        catch (Exception ex) { Snackbar.Add($"Test failed: {ex.Message}", Severity.Error); }
     }
 }

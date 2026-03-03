@@ -139,25 +139,36 @@ dotnet test MacroSutra.Tests
 
 ### Phase 2: Brokerage Integration
 
-- [ ] `IBrokerageProvider` abstraction — connect, authenticate, get positions, place orders, get market data, get historical data
-- [ ] Alpaca provider (primary — most developer-friendly, free, paper trading for dev)
+- [x] `IBrokerageProvider` abstraction — connect, authenticate, get positions, place orders, get market data, get historical data
+- [x] Alpaca provider (primary — most developer-friendly, free, paper trading for dev)
 - [ ] Charles Schwab provider
 - [ ] Interactive Brokers provider
 - [ ] Tradier provider
-- [ ] Brokerage account linking UI — OAuth flows, API key entry, connection status
-- [ ] Portfolio dashboard — unified view of positions, balances, and P&L across all linked brokerages
-- [ ] Paper trading mode toggle per brokerage account
+- [x] Webull provider (REST via HttpClient, sandbox mode, token refresh)
+- [x] Brokerage account linking UI — API key entry, credential validation, connection status
+- [x] Portfolio dashboard — unified view of positions, balances, and P&L across all linked brokerages
+- [x] Paper trading mode toggle per brokerage account
+- [x] Position sync service — fetch remote positions, upsert/delete stale, cache balance
+- [x] Credential management — provider-specific credential forms with validation
 
 ### Phase 3: Trading Triggers & Strategy Engine
 
-- [ ] Trigger condition model — price (above/below/crosses), volume, percentage change, technical indicators (SMA, EMA, RSI, MACD, Bollinger Bands)
-- [ ] Compound trigger logic — AND/OR/NOT groups, nested conditions
-- [ ] Time-based conditions — time-of-day, day-of-week, market open/close relative
+- [x] Market data service — Alpaca free data API for snapshots and historical bars with 30s in-memory cache
+- [x] Technical indicators — SMA, EMA, RSI, MACD calculated from historical price data
+- [x] Condition evaluator — evaluates Price, Volume, PercentChange, MovingAverage, RSI, MACD conditions
+- [x] CrossesAbove/CrossesBelow operators — in-memory previous-value tracking for crossover detection
+- [x] Trade execution service — resolves Shares/DollarAmount/PercentOfPortfolio quantities, places orders via brokerage providers
+- [x] Alert actions — recorded as filled trades with descriptive notes
+- [x] Strategy evaluation engine — BackgroundService polling every 60s during US market hours (9:30-16:00 ET, Mon-Fri)
+- [x] AND/OR logic group evaluation — flat condition groups matching existing LogicGroup model
+- [x] Order status tracker — BackgroundService polling open orders every 30s, updates trade status from brokerage
+- [x] "Test Now" feature — manually evaluate a strategy against live data, shows per-condition pass/fail
+- [x] Execution history — LastEvaluatedUtc and LastTriggeredUtc tracked per strategy
+- [x] Dashboard engine status indicator — shows running/stopped and last evaluation timestamp
 - [ ] Strategy builder UI — visual drag-and-drop trigger composition with live preview
 - [ ] Strategy templates — pre-built common strategies (stop-loss, trailing stop, mean reversion, momentum, breakout)
-- [ ] Trigger evaluation engine — background service polling market data and evaluating active triggers
-- [ ] Order execution pipeline — trigger fires → validate → route to brokerage → confirm → log
-- [ ] Execution history and trade log with full audit trail
+- [ ] Time-based conditions — time-of-day, day-of-week, market open/close relative
+- [ ] Compound trigger logic — nested condition groups (currently flat AND/OR per strategy)
 
 ### Phase 4: Backtesting Engine
 
@@ -192,7 +203,7 @@ dotnet test MacroSutra.Tests
 
 ### Phase 7: Additional Brokerages
 
-- [ ] Webull provider
+- [x] Webull provider (moved to Phase 2)
 - [ ] TradeStation provider
 - [ ] Tastytrade provider
 - [ ] Public.com provider
