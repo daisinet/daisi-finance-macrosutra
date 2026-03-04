@@ -1,0 +1,105 @@
+@page "/leaderboard"
+@layout MacroSutra.Web.Components.Layout.LandingLayout
+@using MacroSutra.Core.Models
+@using MacroSutra.Services
+@inject CommunityService CommunityService
+@inject NavigationManager Nav
+
+<PageTitle>Strategy Leaderboard — MacroSutra</PageTitle>
+
+<section class="landing-section">
+    <div class="landing-container">
+        <h1 class="text-center">Strategy Leaderboard</h1>
+        <p class="text-center landing-hero-subtitle">Top-performing public strategies ranked by backtested performance.</p>
+
+        <div style="display: flex; justify-content: center; margin-bottom: 1.5rem; gap: 0.5rem;">
+            <MudButton Variant="@(sortBy == "sharpe" ? Variant.Filled : Variant.Outlined)" Color="Color.Primary" OnClick="@(() => SortBy("sharpe"))">Sharpe Ratio</MudButton>
+            <MudButton Variant="@(sortBy == "return" ? Variant.Filled : Variant.Outlined)" Color="Color.Primary" OnClick="@(() => SortBy("return"))">Total Return</MudButton>
+            <MudButton Variant="@(sortBy == "winrate" ? Variant.Filled : Variant.Outlined)" Color="Color.Primary" OnClick="@(() => SortBy("winrate"))">Win Rate</MudButton>
+        </div>
+
+        @if (loading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (entries.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">No strategies with backtest data yet. Run backtests on public strategies to appear here.</MudAlert>
+        }
+        else
+        {
+            <MudSimpleTable Dense="true" Hover="true">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Strategy</th>
+                        <th>Symbols</th>
+                        <th>Return %</th>
+                        <th>Sharpe</th>
+                        <th>Max DD %</th>
+                        <th>Win Rate</th>
+                        <th>Rating</th>
+                        <th>Subscribers</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < entries.Count; i++)
+                    {
+                        var entry = entries[i];
+                        var rank = i + 1;
+                        <tr style="cursor: pointer;" @onclick="@(() => Nav.NavigateTo($"/marketplace/{entry.StrategyId}"))">
+                            <td><strong>@rank</strong></td>
+                            <td>@entry.StrategyName</td>
+                            <td>@string.Join(", ", entry.Symbols.Take(3))@(entry.Symbols.Count > 3 ? $" +{entry.Symbols.Count - 3}" : "")</td>
+                            <td class="@(entry.TotalReturnPercent >= 0 ? "text-success" : "text-danger")">
+                                @entry.TotalReturnPercent.ToString("N1")%
+                            </td>
+                            <td>@entry.SharpeRatio.ToString("N2")</td>
+                            <td class="text-danger">@entry.MaxDrawdownPercent.ToString("N1")%</td>
+                            <td>@entry.WinRate.ToString("N0")%</td>
+                            <td>
+                                @if (entry.ReviewCount > 0)
+                                {
+                                    <text>@entry.AverageRating.ToString("N1") (@entry.ReviewCount)</text>
+                                }
+                                else
+                                {
+                                    <text>—</text>
+                                }
+                            </td>
+                            <td>@entry.SubscriberCount</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        }
+    </div>
+</section>
+
+@code {
+    private List<LeaderboardEntry> entries = new();
+    private bool loading = true;
+    private string sortBy = "sharpe";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLeaderboard();
+    }
+
+    private async Task SortBy(string sort)
+    {
+        sortBy = sort;
+        await LoadLeaderboard();
+    }
+
+    private async Task LoadLeaderboard()
+    {
+        loading = true;
+        try
+        {
+            entries = await CommunityService.GetLeaderboardAsync(sortBy, 25);
+        }
+        catch { }
+        loading = false;
+    }
+}

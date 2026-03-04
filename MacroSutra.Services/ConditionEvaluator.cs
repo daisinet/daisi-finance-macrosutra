@@ -32,6 +32,8 @@ public class ConditionEvaluator
         return (triggered, currentValue);
     }
 
+    private static readonly TimeZoneInfo EasternTime = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+
     internal static decimal ResolveCurrentValue(TriggerCondition condition, MarketSnapshot snapshot, decimal[] priceHistory)
     {
         return condition.ConditionType switch
@@ -48,8 +50,32 @@ public class ConditionEvaluator
             ConditionType.MACD => priceHistory.Length >= 26
                 ? TechnicalIndicators.MACD(priceHistory).macdLine
                 : 0,
+            ConditionType.TimeOfDay => ResolveTimeOfDay(snapshot.Timestamp),
+            ConditionType.DayOfWeek => ResolveDayOfWeek(snapshot.Timestamp),
             _ => 0
         };
+    }
+
+    /// <summary>
+    /// Returns minutes since midnight in Eastern Time. Uses snapshot.Timestamp so backtesting works correctly.
+    /// </summary>
+    private static decimal ResolveTimeOfDay(DateTime timestamp)
+    {
+        var et = TimeZoneInfo.ConvertTimeFromUtc(
+            timestamp.Kind == DateTimeKind.Utc ? timestamp : DateTime.SpecifyKind(timestamp, DateTimeKind.Utc),
+            EasternTime);
+        return et.Hour * 60 + et.Minute;
+    }
+
+    /// <summary>
+    /// Returns day of week as 0=Sunday through 6=Saturday.
+    /// </summary>
+    private static decimal ResolveDayOfWeek(DateTime timestamp)
+    {
+        var et = TimeZoneInfo.ConvertTimeFromUtc(
+            timestamp.Kind == DateTimeKind.Utc ? timestamp : DateTime.SpecifyKind(timestamp, DateTimeKind.Utc),
+            EasternTime);
+        return (int)et.DayOfWeek;
     }
 
     internal static bool EvaluateOperator(
@@ -67,6 +93,46 @@ public class ConditionEvaluator
             ConditionOperator.CrossesBelow => EvaluateCrossesBelow(currentValue, targetValue, crossoverKey, previousValues),
             _ => false
         };
+    }
+
+    /// <summary>
+    /// Recursively evaluates a nested ConditionGroup tree.
+    /// Returns whether the group as a whole triggered plus individual condition results.
+    /// </summary>
+    public virtual (bool triggered, List<(bool passed, decimal value, string conditionId)> results) EvaluateGroup(
+        ConditionGroup group,
+        MarketSnapshot snapshot,
+        decimal[] priceHistory,
+        Dictionary<string, decimal> previousValues)
+    {
+        var allResults = new List<(bool passed, decimal value, string conditionId)>();
+
+        // Evaluate direct conditions in this group
+        var localResults = new List<bool>();
+        foreach (var condition in group.Conditions)
+        {
+            var (triggered, currentValue) = Evaluate(condition, snapshot, priceHistory, previousValues);
+            allResults.Add((triggered, currentValue, condition.ConditionId));
+            localResults.Add(triggered);
+        }
+
+        // Recurse into child groups
+        foreach (var childGroup in group.ChildGroups)
+        {
+            var (childTriggered, childResults) = EvaluateGroup(childGroup, snapshot, priceHistory, previousValues);
+            allResults.AddRange(childResults);
+            localResults.Add(childTriggered);
+        }
+
+        // Apply this group's logic
+        bool groupTriggered = group.Logic switch
+        {
+            LogicGroupType.And => localResults.Count > 0 && localResults.All(r => r),
+            LogicGroupType.Or => localResults.Any(r => r),
+            _ => false
+        };
+
+        return (groupTriggered, allResults);
     }
 
     private static bool EvaluateCrossesAbove(decimal current, decimal target, string key, Dictionary<string, decimal> prev)

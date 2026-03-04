@@ -10,4 +10,10 @@ public class BrokerageAccount
     public decimal? CachedBalance { get; set; }
     public DateTime? LastSyncUtc { get; set; }
     public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// Write-only credential data for account creation/update.
+    /// Stripped from API responses.
+    /// </summary>
+    public string? CredentialData { get; set; }
 }

@@ -11,5 +11,7 @@ public enum ConditionType
     MovingAverage = 3,
     RSI = 4,
     MACD = 5,
-    Custom = 6
+    Custom = 6,
+    TimeOfDay = 7,
+    DayOfWeek = 8
 }

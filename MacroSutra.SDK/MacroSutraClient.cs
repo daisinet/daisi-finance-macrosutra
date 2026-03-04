@@ -21,6 +21,10 @@ public class MacroSutraClient : IDisposable
     public StrategyClient Strategies { get; }
     public TradeClient Trades { get; }
     public PortfolioClient Portfolio { get; }
+    public BacktestClient Backtests { get; }
+    public CommunityClient Community { get; }
+    public SubscriptionClient Subscriptions { get; }
+    public PushClient Push { get; }
 
     public MacroSutraClient(string baseUrl, string userClientKey)
     {
@@ -34,6 +38,10 @@ public class MacroSutraClient : IDisposable
         Strategies = new StrategyClient(_http);
         Trades = new TradeClient(_http);
         Portfolio = new PortfolioClient(_http);
+        Backtests = new BacktestClient(_http);
+        Community = new CommunityClient(_http);
+        Subscriptions = new SubscriptionClient(_http);
+        Push = new PushClient(_http);
     }
 
     public MacroSutraClient(HttpClient httpClient)
@@ -43,6 +51,10 @@ public class MacroSutraClient : IDisposable
         Strategies = new StrategyClient(_http);
         Trades = new TradeClient(_http);
         Portfolio = new PortfolioClient(_http);
+        Backtests = new BacktestClient(_http);
+        Community = new CommunityClient(_http);
+        Subscriptions = new SubscriptionClient(_http);
+        Push = new PushClient(_http);
     }
 
     public void Dispose()

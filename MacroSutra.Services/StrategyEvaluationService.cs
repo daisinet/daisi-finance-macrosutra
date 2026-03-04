@@ -76,6 +76,7 @@ public class StrategyEvaluationService(
         var cosmo = scope.ServiceProvider.GetRequiredService<MacroSutraCosmo>();
         var conditionEvaluator = scope.ServiceProvider.GetRequiredService<ConditionEvaluator>();
         var executionService = scope.ServiceProvider.GetRequiredService<TradeExecutionService>();
+        var dispatchService = scope.ServiceProvider.GetRequiredService<SubscriptionDispatchService>();
 
         // 1. Get all active strategies (cross-partition)
         var strategies = await cosmo.GetAllActiveStrategiesAsync();
@@ -110,7 +111,7 @@ public class StrategyEvaluationService(
 
             try
             {
-                await EvaluateStrategyAsync(strategy, snapshots, priceHistories, conditionEvaluator, executionService, cosmo);
+                await EvaluateStrategyAsync(strategy, snapshots, priceHistories, conditionEvaluator, executionService, dispatchService, cosmo);
             }
             catch (Exception ex)
             {
@@ -125,6 +126,7 @@ public class StrategyEvaluationService(
         Dictionary<string, decimal[]> priceHistories,
         ConditionEvaluator conditionEvaluator,
         TradeExecutionService executionService,
+        SubscriptionDispatchService dispatchService,
         MacroSutraCosmo cosmo)
     {
         bool anyTriggered = false;
@@ -137,39 +139,69 @@ public class StrategyEvaluationService(
 
             // Build per-strategy previous values view using ConcurrentDictionary
             var strategyPrevValues = new Dictionary<string, decimal>();
-            foreach (var condition in strategy.Conditions)
+            var allConditions = strategy.RootConditionGroup != null
+                ? CollectConditions(strategy.RootConditionGroup)
+                : strategy.Conditions;
+            foreach (var condition in allConditions)
             {
                 var key = $"{strategy.id}:{condition.ConditionId}:{symbol}";
                 if (_previousValues.TryGetValue(key, out var prev))
                     strategyPrevValues[$"{condition.ConditionId}:{symbol}"] = prev;
             }
 
-            // Evaluate all conditions
-            var results = new List<(bool passed, decimal value)>();
-            foreach (var condition in strategy.Conditions)
+            // Evaluate conditions — use recursive group if available, else flat
+            bool shouldTrigger;
+            if (strategy.RootConditionGroup != null)
             {
-                var (triggered, currentValue) = conditionEvaluator.Evaluate(condition, snapshot, history, strategyPrevValues);
-                results.Add((triggered, currentValue));
+                var (groupTriggered, groupResults) = conditionEvaluator.EvaluateGroup(
+                    strategy.RootConditionGroup, snapshot, history, strategyPrevValues);
+                shouldTrigger = groupTriggered;
 
                 // Write back to persistent crossover state
-                var key = $"{strategy.id}:{condition.ConditionId}:{symbol}";
-                _previousValues[key] = currentValue;
+                foreach (var (_, value, conditionId) in groupResults)
+                {
+                    var key = $"{strategy.id}:{conditionId}:{symbol}";
+                    _previousValues[key] = value;
+                }
             }
-
-            // Apply logic group
-            bool shouldTrigger = strategy.LogicGroup switch
+            else
             {
-                LogicGroupType.And => results.Count > 0 && results.All(r => r.passed),
-                LogicGroupType.Or => results.Any(r => r.passed),
-                _ => false
-            };
+                var results = new List<(bool passed, decimal value)>();
+                foreach (var condition in strategy.Conditions)
+                {
+                    var (triggered, currentValue) = conditionEvaluator.Evaluate(condition, snapshot, history, strategyPrevValues);
+                    results.Add((triggered, currentValue));
+
+                    // Write back to persistent crossover state
+                    var key = $"{strategy.id}:{condition.ConditionId}:{symbol}";
+                    _previousValues[key] = currentValue;
+                }
+
+                // Apply logic group
+                shouldTrigger = strategy.LogicGroup switch
+                {
+                    LogicGroupType.And => results.Count > 0 && results.All(r => r.passed),
+                    LogicGroupType.Or => results.Any(r => r.passed),
+                    _ => false
+                };
+            }
 
             if (shouldTrigger)
             {
                 logger.LogInformation("Strategy {StrategyName} ({StrategyId}) triggered for {Symbol}",
                     strategy.Name, strategy.id, symbol);
-                await executionService.ExecuteActionsAsync(strategy, symbol, snapshot);
+                var trades = await executionService.ExecuteActionsAsync(strategy, symbol, snapshot);
                 anyTriggered = true;
+
+                // Fan out to subscribers (best-effort — never blocks publisher trades)
+                try
+                {
+                    await dispatchService.DispatchAsync(strategy, trades);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Subscription dispatch failed for strategy {StrategyId}", strategy.id);
+                }
             }
         }
 
@@ -188,6 +220,10 @@ public class StrategyEvaluationService(
     {
         var result = new StrategyEvaluationResult { EvaluatedUtc = DateTime.UtcNow };
         var tempPreviousValues = new Dictionary<string, decimal>();
+        var perSymbolTriggered = new List<bool>();
+
+        using var scope = scopeFactory.CreateScope();
+        var evaluator = scope.ServiceProvider.GetRequiredService<ConditionEvaluator>();
 
         foreach (var symbol in strategy.Symbols)
         {
@@ -196,33 +232,83 @@ public class StrategyEvaluationService(
 
             var history = await marketDataService.GetHistoricalPricesAsync(symbol);
 
-            foreach (var condition in strategy.Conditions)
+            if (strategy.RootConditionGroup != null)
             {
-                using var scope = scopeFactory.CreateScope();
-                var evaluator = scope.ServiceProvider.GetRequiredService<ConditionEvaluator>();
-                var (triggered, currentValue) = evaluator.Evaluate(condition, snapshot, history, tempPreviousValues);
+                var (groupTriggered, groupResults) = evaluator.EvaluateGroup(
+                    strategy.RootConditionGroup, snapshot, history, tempPreviousValues);
+                perSymbolTriggered.Add(groupTriggered);
 
-                result.Conditions.Add(new ConditionResult
+                // Look up condition metadata from the group tree for richer results
+                var conditionMap = BuildConditionMap(strategy.RootConditionGroup);
+                foreach (var (passed, value, conditionId) in groupResults)
                 {
-                    ConditionId = condition.ConditionId,
-                    ConditionType = condition.ConditionType,
-                    CurrentValue = currentValue,
-                    TargetValue = condition.Value,
-                    Operator = condition.Operator,
-                    Passed = triggered
-                });
+                    conditionMap.TryGetValue(conditionId, out var cond);
+                    result.Conditions.Add(new ConditionResult
+                    {
+                        ConditionId = conditionId,
+                        ConditionType = cond?.ConditionType ?? ConditionType.Custom,
+                        CurrentValue = value,
+                        TargetValue = cond?.Value ?? 0,
+                        Operator = cond?.Operator ?? ConditionOperator.Equal,
+                        Passed = passed
+                    });
+                }
+            }
+            else
+            {
+                var symbolResults = new List<bool>();
+                foreach (var condition in strategy.Conditions)
+                {
+                    var (triggered, currentValue) = evaluator.Evaluate(condition, snapshot, history, tempPreviousValues);
+                    symbolResults.Add(triggered);
+
+                    result.Conditions.Add(new ConditionResult
+                    {
+                        ConditionId = condition.ConditionId,
+                        ConditionType = condition.ConditionType,
+                        CurrentValue = currentValue,
+                        TargetValue = condition.Value,
+                        Operator = condition.Operator,
+                        Passed = triggered
+                    });
+                }
+
+                var symbolTriggered = strategy.LogicGroup switch
+                {
+                    LogicGroupType.And => symbolResults.Count > 0 && symbolResults.All(r => r),
+                    LogicGroupType.Or => symbolResults.Any(r => r),
+                    _ => false
+                };
+                perSymbolTriggered.Add(symbolTriggered);
             }
         }
 
-        // Determine overall trigger based on logic group
-        result.WouldTrigger = strategy.LogicGroup switch
-        {
-            LogicGroupType.And => result.Conditions.Count > 0 && result.Conditions.All(c => c.Passed),
-            LogicGroupType.Or => result.Conditions.Any(c => c.Passed),
-            _ => false
-        };
+        // Any symbol triggering means the strategy would trigger
+        result.WouldTrigger = perSymbolTriggered.Any(t => t);
 
         return result;
+    }
+
+    /// <summary>
+    /// Recursively collects all conditions from a ConditionGroup tree.
+    /// </summary>
+    private static List<TriggerCondition> CollectConditions(ConditionGroup group)
+    {
+        var all = new List<TriggerCondition>(group.Conditions);
+        foreach (var child in group.ChildGroups)
+            all.AddRange(CollectConditions(child));
+        return all;
+    }
+
+    /// <summary>
+    /// Builds a lookup from conditionId to TriggerCondition for a group tree.
+    /// </summary>
+    private static Dictionary<string, TriggerCondition> BuildConditionMap(ConditionGroup group)
+    {
+        var map = new Dictionary<string, TriggerCondition>();
+        foreach (var c in CollectConditions(group))
+            map[c.ConditionId] = c;
+        return map;
     }
 
     internal static bool IsMarketOpen()

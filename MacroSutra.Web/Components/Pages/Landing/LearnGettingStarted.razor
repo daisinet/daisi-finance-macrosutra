@@ -117,7 +117,124 @@
         <h3 class="mt-3">Order Tracking</h3>
         <p>After an order is placed, a separate tracker checks order status every 30 seconds and updates the trade record when orders are filled, partially filled, cancelled, or rejected.</p>
 
-        <h2 id="portfolio" class="mt-4">4. View Positions and Trades</h2>
+        <h2 id="backtesting" class="mt-4">4. Backtesting Your Strategies</h2>
+        <p>Before risking real capital, test your strategies against historical market data to see how they would have performed.</p>
+
+        <h3 class="mt-3">Running a Backtest</h3>
+        <ol>
+            <li>Navigate to <strong>Trading &rarr; Backtesting</strong> in the sidebar.</li>
+            <li>Click <strong>New Backtest</strong>.</li>
+            <li>Select a strategy from your saved strategies.</li>
+            <li>Enter a stock symbol (e.g., <strong>AAPL</strong>).</li>
+            <li>Choose a start date and end date for the simulation period.</li>
+            <li>Set your initial capital (default $100,000).</li>
+            <li>Click <strong>Run Backtest</strong>. The engine will simulate your strategy against historical daily bars.</li>
+        </ol>
+
+        <h3 class="mt-3">Understanding Results</h3>
+        <p>After a backtest completes, you'll see:</p>
+        <ul>
+            <li><strong>Performance metrics</strong> — Total return, Sharpe ratio, max drawdown, win rate, profit factor, total trades, and per-trade averages.</li>
+            <li><strong>Equity curve</strong> — A line chart showing how your portfolio value changed over time.</li>
+            <li><strong>Drawdown chart</strong> — Shows the peak-to-trough decline at each point, helping you understand risk.</li>
+            <li><strong>Trade table</strong> — Every simulated trade with entry/exit prices, P&amp;L, return percentage, and duration.</li>
+        </ul>
+
+        <h3 class="mt-3">Key Metrics Explained</h3>
+        <ul>
+            <li><strong>Total Return %</strong> — Overall percentage gain or loss from initial capital.</li>
+            <li><strong>Sharpe Ratio</strong> — Risk-adjusted return. Higher is better; above 1.0 is generally considered good.</li>
+            <li><strong>Max Drawdown %</strong> — The largest peak-to-trough decline. Shows worst-case loss from a high point.</li>
+            <li><strong>Win Rate</strong> — Percentage of trades that were profitable.</li>
+            <li><strong>Profit Factor</strong> — Gross profits divided by gross losses. Above 1.0 means the strategy is profitable overall.</li>
+        </ul>
+
+        <h3 class="mt-3">Limitations</h3>
+        <ul>
+            <li>Backtests use <strong>daily bars only</strong> — intraday price movements are not simulated.</li>
+            <li>No slippage or commission modeling — actual results may differ slightly due to execution costs.</li>
+            <li>Trades execute at the daily close price, which may not reflect real-world fill prices.</li>
+            <li>Single symbol per backtest — multi-symbol strategies are evaluated against one symbol at a time.</li>
+        </ul>
+
+        <h2 id="sharing" class="mt-4">5. Sharing Your Strategies</h2>
+        <p>MacroSutra has a built-in strategy marketplace where you can share your strategies with the community and discover strategies from other traders.</p>
+
+        <h3 class="mt-3">Making a Strategy Public</h3>
+        <ol>
+            <li>Open a strategy in the strategy editor.</li>
+            <li>Change the <strong>Visibility</strong> dropdown from <strong>Private</strong> to <strong>Public</strong>.</li>
+            <li>Save the strategy. It will now appear in the <a href="/marketplace">Strategy Marketplace</a>.</li>
+        </ol>
+        <p>You can also set visibility to <strong>Subscribers Only</strong> to share with your subscribers but not the general public.</p>
+
+        <h3 class="mt-3">Browsing the Marketplace</h3>
+        <p>Visit the <a href="/marketplace">Marketplace</a> to browse public strategies shared by the community. You can:</p>
+        <ul>
+            <li>Sort strategies by newest or name.</li>
+            <li>View strategy details including conditions, actions, and community stats.</li>
+            <li>See ratings and reviews from other users.</li>
+        </ul>
+
+        <h3 class="mt-3">Forking a Strategy</h3>
+        <p>Found a strategy you like? <strong>Fork it</strong> to create your own copy that you can customize:</p>
+        <ol>
+            <li>Open any public strategy from the marketplace.</li>
+            <li>Click <strong>Fork</strong> — this creates a private copy in your account.</li>
+            <li>The forked strategy starts as inactive. Modify conditions, actions, or symbols as needed.</li>
+            <li>Activate it when ready. The fork maintains attribution to the original author.</li>
+        </ol>
+
+        <h3 class="mt-3">Ratings and Reviews</h3>
+        <p>Help the community by rating and reviewing strategies you've tried:</p>
+        <ul>
+            <li>Rate strategies from 1 to 5 stars.</li>
+            <li>Add an optional text review explaining your experience.</li>
+            <li>You can leave one review per strategy. Edit or delete it at any time.</li>
+        </ul>
+
+        <h3 class="mt-3">Strategy Leaderboard</h3>
+        <p>The <a href="/leaderboard">Leaderboard</a> ranks public strategies by backtested performance. Sort by:</p>
+        <ul>
+            <li><strong>Sharpe Ratio</strong> — Risk-adjusted return (higher is better).</li>
+            <li><strong>Total Return</strong> — Raw percentage gain.</li>
+            <li><strong>Win Rate</strong> — Percentage of profitable trades.</li>
+        </ul>
+        <p>Only strategies with completed backtests appear on the leaderboard. Run backtests on your public strategies to get ranked!</p>
+
+        <h2 id="subscriptions" class="mt-4">6. Subscribing to Strategies</h2>
+        <p>Subscribe to other traders' strategies to automatically receive trade signals when their strategies fire.</p>
+
+        <h3 class="mt-3">How to Subscribe</h3>
+        <ol>
+            <li>Browse the <a href="/marketplace">Strategy Marketplace</a> and find a strategy you want to follow.</li>
+            <li>Click <strong>Subscribe</strong> on the strategy detail page.</li>
+            <li>Choose an action type:</li>
+        </ol>
+        <ul>
+            <li><strong>Mirror</strong> — Automatically execute the same trade on your connected brokerage account.</li>
+            <li><strong>Scaled Mirror</strong> — Mirror trades with a custom scale factor (e.g., 0.5x = half the quantity).</li>
+            <li><strong>Email Alert</strong> — Receive an email with trade details when the strategy fires.</li>
+            <li><strong>Webhook</strong> — POST trade data to your custom URL for external integrations.</li>
+        </ul>
+        <ol start="4">
+            <li>Configure the required fields (brokerage account for mirror, email for alerts, URL for webhooks).</li>
+            <li>If the strategy has a credit price, credits are deducted from your Daisinet balance.</li>
+            <li>Click <strong>Subscribe</strong> to confirm.</li>
+        </ol>
+
+        <h3 class="mt-3">Managing Subscriptions</h3>
+        <p>Visit <strong>Subscriptions</strong> in the sidebar to see your active subscriptions. You can:</p>
+        <ul>
+            <li>View action history — see every trade signal received and whether it succeeded.</li>
+            <li>Cancel a subscription at any time.</li>
+            <li>Switch to the <strong>My Subscribers</strong> tab to see who's subscribed to your strategies.</li>
+        </ul>
+
+        <h3 class="mt-3">Publishing Strategies for Subscribers</h3>
+        <p>To accept subscribers, set your strategy's visibility to <strong>Public</strong> or <strong>Subscribers Only</strong>, then optionally set a credit price and billing period in the strategy editor.</p>
+
+        <h2 id="portfolio" class="mt-4">7. View Positions and Trades</h2>
         <p>Once your brokerage is linked and strategies are running:</p>
         <ul>
             <li><strong>Dashboard</strong> — Overview of portfolio value, recent trades, and active strategies.</li>
@@ -125,7 +242,7 @@
             <li><strong>Trades</strong> — Full trade history with filtering by strategy, symbol, and date range.</li>
         </ul>
 
-        <h2 id="team" class="mt-4">5. Team Management</h2>
+        <h2 id="team" class="mt-4">8. Team Management</h2>
         <p>MacroSutra supports team accounts imported from your Daisinet organization:</p>
         <ol>
             <li>Navigate to <strong>Settings &rarr; Team</strong>.</li>

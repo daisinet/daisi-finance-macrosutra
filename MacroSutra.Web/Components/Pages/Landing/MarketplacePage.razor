@@ -1,0 +1,130 @@
+@page "/marketplace"
+@layout MacroSutra.Web.Components.Layout.LandingLayout
+@using MacroSutra.Core.Models
+@using MacroSutra.Services
+@inject CommunityService CommunityService
+
+<PageTitle>Strategy Marketplace — MacroSutra</PageTitle>
+
+<section class="landing-section">
+    <div class="landing-container">
+        <h1 class="text-center">Strategy Marketplace</h1>
+        <p class="text-center landing-hero-subtitle">Browse community-shared trading strategies. Fork any strategy to customize it for your own account.</p>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <MudSelect T="string" Value="sortBy" ValueChanged="OnSortChanged" Label="Sort by" Style="max-width: 200px;" Variant="Variant.Outlined" Dense="true">
+                <MudSelectItem Value="@("created")">Newest</MudSelectItem>
+                <MudSelectItem Value="@("name")">Name</MudSelectItem>
+            </MudSelect>
+        </div>
+
+        @if (loading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (strategies.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">No public strategies yet. Be the first to share one!</MudAlert>
+        }
+        else
+        {
+            <MudGrid>
+                @foreach (var strategy in strategies)
+                {
+                    var stats = statsMap.GetValueOrDefault(strategy.id);
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudCard Class="cursor-pointer" Style="height: 100%;" @onclick="@(() => NavigateTo(strategy.id))">
+                            <MudCardContent>
+                                <MudText Typo="Typo.h6">@strategy.Name</MudText>
+                                <MudText Typo="Typo.body2" Class="text-muted mb-2">
+                                    @string.Join(", ", strategy.Symbols.Take(5))
+                                    @if (strategy.Symbols.Count > 5) { <text> +@(strategy.Symbols.Count - 5) more</text> }
+                                </MudText>
+                                @if (!string.IsNullOrEmpty(strategy.Description))
+                                {
+                                    <MudText Typo="Typo.body2" Class="mb-2" Style="max-height: 3em; overflow: hidden;">
+                                        @strategy.Description
+                                    </MudText>
+                                }
+                                <div style="display: flex; gap: 1rem; align-items: center; margin-top: 0.5rem;">
+                                    @if (stats != null && stats.ReviewCount > 0)
+                                    {
+                                        <MudRating ReadOnly="true" SelectedValue="@((int)Math.Round(stats.AverageRating))" Size="Size.Small" />
+                                        <MudText Typo="Typo.caption">(@stats.ReviewCount)</MudText>
+                                    }
+                                    @if (stats != null && stats.ForkCount > 0)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
+                                            <i class="fa-duotone fa-code-fork me-1"></i> @stats.ForkCount
+                                        </MudChip>
+                                    }
+                                    @if (stats != null && stats.SubscriberCount > 0)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
+                                            <i class="fa-duotone fa-rss me-1"></i> @stats.SubscriberCount
+                                        </MudChip>
+                                    }
+                                </div>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+                }
+            </MudGrid>
+
+            <div style="display: flex; justify-content: center; margin-top: 2rem; gap: 1rem;">
+                @if (currentPage > 0)
+                {
+                    <MudButton Variant="Variant.Outlined" OnClick="PreviousPage">Previous</MudButton>
+                }
+                @if (strategies.Count == pageSize)
+                {
+                    <MudButton Variant="Variant.Outlined" OnClick="NextPage">Next</MudButton>
+                }
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private List<TradingStrategy> strategies = new();
+    private Dictionary<string, StrategyCommunityStats> statsMap = new();
+    private bool loading = true;
+    private string sortBy = "created";
+    private int currentPage = 0;
+    private const int pageSize = 20;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStrategies();
+    }
+
+    private async Task LoadStrategies()
+    {
+        loading = true;
+        try
+        {
+            strategies = await CommunityService.GetPublicStrategiesAsync(currentPage, pageSize, sortBy);
+            statsMap.Clear();
+            foreach (var s in strategies)
+            {
+                var stats = await CommunityService.GetCommunityStatsAsync(s.id);
+                if (stats != null) statsMap[s.id] = stats;
+            }
+        }
+        catch { }
+        loading = false;
+    }
+
+    private async Task OnSortChanged(string newSort)
+    {
+        sortBy = newSort;
+        currentPage = 0;
+        await LoadStrategies();
+    }
+
+    private async Task NextPage() { currentPage++; await LoadStrategies(); }
+    private async Task PreviousPage() { if (currentPage > 0) currentPage--; await LoadStrategies(); }
+    private void NavigateTo(string id) => Nav.NavigateTo($"/marketplace/{id}");
+}

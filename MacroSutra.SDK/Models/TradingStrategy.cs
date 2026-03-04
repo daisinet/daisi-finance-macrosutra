@@ -13,4 +13,33 @@ public class TradingStrategy
     public DateTime CreatedUtc { get; set; }
     public DateTime? LastEvaluatedUtc { get; set; }
     public DateTime? LastTriggeredUtc { get; set; }
+
+    // Conditions and actions
+    public string LogicGroup { get; set; } = "And";
+    public List<StrategyCondition> Conditions { get; set; } = new();
+    public List<StrategyAction> Actions { get; set; } = new();
+
+    // Strategy configuration
+    public string SizingMode { get; set; } = "Fixed";
+    public string Visibility { get; set; } = "Private";
+    public long SubscriptionCreditPrice { get; set; }
+    public int SubscriptionPeriodDays { get; set; } = 30;
+    public string? ForkedFromStrategyId { get; set; }
+}
+
+public class StrategyCondition
+{
+    public string ConditionId { get; set; } = "";
+    public string ConditionType { get; set; } = "Price";
+    public string Operator { get; set; } = "GreaterThan";
+    public decimal Value { get; set; }
+    public int? Period { get; set; }
+}
+
+public class StrategyAction
+{
+    public string ActionType { get; set; } = "MarketOrder";
+    public string Side { get; set; } = "Buy";
+    public string QuantityType { get; set; } = "Shares";
+    public decimal Quantity { get; set; }
 }

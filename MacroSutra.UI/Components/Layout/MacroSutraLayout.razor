@@ -43,6 +43,10 @@
                 <i class="fa-duotone fa-arrow-right-arrow-left"></i>
                 @if (!sidebarCollapsed) { <span>Trades</span> }
             </NavLink>
+            <NavLink class="ms-nav-item" href="backtests">
+                <i class="fa-duotone fa-chart-line"></i>
+                @if (!sidebarCollapsed) { <span>Backtesting</span> }
+            </NavLink>
 
             @if (!sidebarCollapsed) { <div class="ms-nav-section">Portfolio</div> }
             <NavLink class="ms-nav-item" href="portfolio" Match="NavLinkMatch.All">
@@ -50,6 +54,10 @@
                 @if (!sidebarCollapsed) { <span>Positions</span> }
             </NavLink>
             @if (!sidebarCollapsed) { <div class="ms-nav-section">Social</div> }
+            <NavLink class="ms-nav-item" href="marketplace">
+                <i class="fa-duotone fa-store"></i>
+                @if (!sidebarCollapsed) { <span>Marketplace</span> }
+            </NavLink>
             <NavLink class="ms-nav-item" href="subscriptions">
                 <i class="fa-duotone fa-rss"></i>
                 @if (!sidebarCollapsed) { <span>Subscriptions</span> }

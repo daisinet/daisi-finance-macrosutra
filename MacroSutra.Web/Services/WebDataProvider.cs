@@ -20,6 +20,8 @@ public class WebDataProvider(
     PositionSyncService syncService,
     SubscriptionService subscriptionService,
     AccountClientFactory accountClientFactory,
+    BacktestService backtestService,
+    CommunityService communityService,
     IServiceProvider serviceProvider) : IDataProvider
 {
     // Users
@@ -62,6 +64,19 @@ public class WebDataProvider(
 
     public async Task DeleteStrategyAsync(string id, string accountId) =>
         await strategyService.DeleteStrategyAsync(id, accountId);
+
+    // Strategy templates
+    public Task<List<StrategyTemplate>> GetStrategyTemplatesAsync()
+    {
+        var templateService = serviceProvider.GetRequiredService<StrategyTemplateService>();
+        return Task.FromResult(templateService.GetTemplates());
+    }
+
+    public Task<StrategyTemplate?> GetStrategyTemplateAsync(string id)
+    {
+        var templateService = serviceProvider.GetRequiredService<StrategyTemplateService>();
+        return Task.FromResult(templateService.GetTemplate(id));
+    }
 
     // Trades
     public async Task<List<Trade>> GetTradesAsync(string accountId, string? symbol = null, TradeStatus? status = null, string? strategyId = null) =>
@@ -128,11 +143,35 @@ public class WebDataProvider(
     public async Task<List<Subscription>> GetSubscriptionsAsync(string accountId) =>
         await subscriptionService.GetSubscriptionsBySubscriberAsync(accountId);
 
-    public async Task<Subscription> CreateSubscriptionAsync(Subscription subscription) =>
-        await subscriptionService.CreateSubscriptionAsync(subscription);
+    public async Task<Subscription?> GetSubscriptionAsync(string id, string accountId) =>
+        await subscriptionService.GetSubscriptionAsync(id, accountId);
+
+    public async Task<Subscription> SubscribeAsync(Subscription subscription)
+    {
+        // Bill credits via Daisinet marketplace if price > 0
+        if (subscription.CreditPrice > 0)
+        {
+            var client = serviceProvider.GetRequiredService<MarketplaceClientFactory>().Create();
+            var marketplaceItemId = $"macrosutra-sub:{subscription.StrategyId}";
+            var response = await client.PurchaseMarketplaceItemAsync(
+                new PurchaseMarketplaceItemRequest
+                {
+                    MarketplaceItemId = marketplaceItemId
+                });
+            subscription.MarketplacePurchaseId = response?.Purchase?.Id;
+        }
+
+        return await subscriptionService.SubscribeAsync(subscription);
+    }
 
     public async Task<Subscription> CancelSubscriptionAsync(string id, string accountId) =>
         await subscriptionService.CancelSubscriptionAsync(id, accountId);
+
+    public async Task<List<SubscriptionAction>> GetSubscriptionActionsAsync(string accountId, string? subscriptionId = null) =>
+        await subscriptionService.GetSubscriptionActionsAsync(accountId, subscriptionId);
+
+    public async Task<List<Subscription>> GetPublisherSubscriptionsAsync(string accountId) =>
+        await subscriptionService.GetPublisherSubscriptionsAsync(accountId);
 
     // Strategy evaluation
     public async Task<StrategyEvaluationResult> EvaluateStrategyAsync(string id, string accountId)
@@ -142,4 +181,49 @@ public class WebDataProvider(
         var evalService = serviceProvider.GetRequiredService<StrategyEvaluationService>();
         return await evalService.EvaluateSingleAsync(strategy);
     }
+
+    // Backtesting
+    public async Task<BacktestResult> RunBacktestAsync(string strategyId, string accountId, string userId, string symbol, DateOnly startDate, DateOnly endDate, decimal initialCapital, decimal slippageBps = 0, decimal commissionPerTrade = 0, string? timeFrame = null) =>
+        await backtestService.CreateAndRunBacktestAsync(strategyId, accountId, userId, symbol, startDate, endDate, initialCapital, slippageBps, commissionPerTrade, timeFrame);
+
+    // Walk-Forward Analysis
+    public async Task<WalkForwardResult> RunWalkForwardAsync(string strategyId, string accountId, string userId, string symbol, DateOnly startDate, DateOnly endDate, decimal initialCapital, int inSampleDays = 252, int outOfSampleDays = 63, decimal slippageBps = 0, decimal commissionPerTrade = 0)
+    {
+        var walkForwardService = serviceProvider.GetRequiredService<WalkForwardService>();
+        return await walkForwardService.RunAsync(strategyId, accountId, userId, symbol, startDate, endDate, initialCapital, inSampleDays, outOfSampleDays, slippageBps, commissionPerTrade);
+    }
+
+    public async Task<List<BacktestResult>> GetBacktestsAsync(string accountId, string? strategyId = null) =>
+        await backtestService.GetBacktestsAsync(accountId, strategyId);
+
+    public async Task<BacktestResult?> GetBacktestAsync(string id, string accountId) =>
+        await backtestService.GetBacktestAsync(id, accountId);
+
+    public async Task DeleteBacktestAsync(string id, string accountId) =>
+        await backtestService.DeleteBacktestAsync(id, accountId);
+
+    // Community
+    public async Task<List<TradingStrategy>> GetPublicStrategiesAsync(int page = 0, int pageSize = 20, string? sortBy = null) =>
+        await communityService.GetPublicStrategiesAsync(page, pageSize, sortBy);
+
+    public async Task<TradingStrategy?> GetPublicStrategyAsync(string strategyId) =>
+        await communityService.GetPublicStrategyAsync(strategyId);
+
+    public async Task<StrategyCommunityStats?> GetCommunityStatsAsync(string strategyId) =>
+        await communityService.GetCommunityStatsAsync(strategyId);
+
+    public async Task<List<StrategyReview>> GetReviewsAsync(string strategyId) =>
+        await communityService.GetReviewsAsync(strategyId);
+
+    public async Task<TradingStrategy> ForkStrategyAsync(string strategyId, string accountId, string userId) =>
+        await communityService.ForkStrategyAsync(strategyId, accountId, userId);
+
+    public async Task<StrategyReview> CreateReviewAsync(string strategyId, string accountId, string userId, string userName, int rating, string? text) =>
+        await communityService.CreateReviewAsync(strategyId, accountId, userId, userName, rating, text);
+
+    public async Task DeleteReviewAsync(string reviewId, string strategyId, string accountId) =>
+        await communityService.DeleteReviewAsync(reviewId, strategyId, accountId);
+
+    public async Task<List<LeaderboardEntry>> GetLeaderboardAsync(string sortBy = "sharpe", int limit = 25) =>
+        await communityService.GetLeaderboardAsync(sortBy, limit);
 }

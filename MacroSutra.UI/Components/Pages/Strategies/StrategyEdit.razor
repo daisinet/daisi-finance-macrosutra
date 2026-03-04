@@ -10,27 +10,52 @@
         <MudTextField @bind-Value="strategy.Name" Label="Strategy Name" Required="true" Class="mb-3" />
         <MudTextField @bind-Value="strategy.Description" Label="Description" Lines="3" Class="mb-3" />
 
+        @if (isNew)
+        {
+            <MudText Typo="Typo.subtitle1" Class="mb-2">Start from Template</MudText>
+            <MudSelect T="string" Label="Choose a template (optional)" Value="selectedTemplateId"
+                       ValueChanged="ApplyTemplate" Class="mb-3">
+                <MudSelectItem T="string" Value="@("")">None — start from scratch</MudSelectItem>
+                @foreach (var t in templates)
+                {
+                    <MudSelectItem T="string" Value="@t.Id">@t.Name — @t.Category</MudSelectItem>
+                }
+            </MudSelect>
+            <MudDivider Class="my-4" />
+        }
+
         <MudText Typo="Typo.subtitle1" Class="mb-2">Symbols</MudText>
         <SymbolChipInput Symbols="strategy.Symbols" SymbolsChanged="@(s => strategy.Symbols = s)" />
 
         <MudDivider Class="my-4" />
 
-        <MudText Typo="Typo.subtitle1" Class="mb-2">Logic Group</MudText>
-        <MudSelect @bind-Value="strategy.LogicGroup" Label="Combine conditions with" Class="mb-3">
-            @foreach (var lg in Enum.GetValues<LogicGroupType>())
-            {
-                <MudSelectItem Value="@lg">@lg</MudSelectItem>
-            }
-        </MudSelect>
+        @if (!useCompoundLogic)
+        {
+            <MudText Typo="Typo.subtitle1" Class="mb-2">Logic Group</MudText>
+            <MudSelect @bind-Value="strategy.LogicGroup" Label="Combine conditions with" Class="mb-3">
+                @foreach (var lg in Enum.GetValues<LogicGroupType>())
+                {
+                    <MudSelectItem Value="@lg">@lg</MudSelectItem>
+                }
+            </MudSelect>
+        }
 
         <MudText Typo="Typo.subtitle1" Class="mb-2">Trigger Conditions</MudText>
-        @foreach (var condition in strategy.Conditions)
+        @if (useCompoundLogic)
         {
-            <TriggerConditionEditor Condition="condition" OnRemove="@(() => strategy.Conditions.Remove(condition))" />
+            <ConditionGroupEditor Group="rootGroup" Depth="0" />
         }
-        <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="AddCondition" Class="mb-3">
-            <MudIcon Icon="@Icons.Material.Filled.Add" /> Add Condition
-        </MudButton>
+        else
+        {
+            @foreach (var condition in strategy.Conditions)
+            {
+                <TriggerConditionEditor Condition="condition" OnRemove="@(() => strategy.Conditions.Remove(condition))" />
+            }
+            <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="AddCondition" Class="mb-3">
+                <MudIcon Icon="@Icons.Material.Filled.Add" /> Add Condition
+            </MudButton>
+        }
+        <MudSwitch T="bool" Value="useCompoundLogic" ValueChanged="OnCompoundLogicToggled" Color="Color.Secondary" Label="Use Compound Logic (nested groups)" Class="mb-3" />
 
         <MudDivider Class="my-4" />
 
@@ -52,7 +77,27 @@
             }
         </MudSelect>
 
-        <MudSwitch @bind-Value="strategy.IsPublic" Label="Public (allow subscriptions)" Color="Color.Primary" Class="mb-3" />
+        <MudSelect @bind-Value="strategy.Visibility" Label="Visibility" Class="mb-3">
+            @foreach (var v in Enum.GetValues<StrategyVisibility>())
+            {
+                <MudSelectItem Value="@v">@v</MudSelectItem>
+            }
+        </MudSelect>
+
+        @if (strategy.Visibility is StrategyVisibility.Public or StrategyVisibility.SubscribersOnly)
+        {
+            <MudDivider Class="my-4" />
+            <MudText Typo="Typo.subtitle1" Class="mb-2">Subscription Pricing</MudText>
+            <MudNumericField @bind-Value="strategy.SubscriptionCreditPrice" Label="Credit Price per Period (0 = free)" Min="0" Class="mb-3" />
+            <MudNumericField @bind-Value="strategy.SubscriptionPeriodDays" Label="Billing Period (days)" Min="1" Max="365" Class="mb-3" />
+        }
+
+        @if (!string.IsNullOrEmpty(strategy.ForkedFromStrategyId))
+        {
+            <MudAlert Severity="Severity.Info" Class="mb-3">
+                <i class="fa-duotone fa-code-fork me-1"></i> Forked from strategy @strategy.ForkedFromStrategyId
+            </MudAlert>
+        }
 
         @if (!isNew && testResult != null)
         {
@@ -105,14 +150,68 @@
 
     private TradingStrategy strategy = new();
     private StrategyEvaluationResult? testResult;
+    private List<StrategyTemplate> templates = new();
+    private string selectedTemplateId = "";
     private bool isNew => string.IsNullOrEmpty(StrategyId);
+    private bool useCompoundLogic;
+    private ConditionGroup rootGroup = new();
 
     protected override async Task OnParametersSetAsync()
     {
         if (!isNew && !string.IsNullOrEmpty(AccountId))
         {
             var existing = await Data.GetStrategyAsync(StrategyId!, AccountId);
-            if (existing != null) strategy = existing;
+            if (existing != null)
+            {
+                strategy = existing;
+                if (strategy.RootConditionGroup != null)
+                {
+                    useCompoundLogic = true;
+                    rootGroup = strategy.RootConditionGroup;
+                }
+            }
+        }
+
+        try { templates = await Data.GetStrategyTemplatesAsync(); }
+        catch { /* templates are optional */ }
+    }
+
+    private async Task ApplyTemplate(string templateId)
+    {
+        selectedTemplateId = templateId;
+        if (string.IsNullOrEmpty(templateId)) return;
+
+        try
+        {
+            var template = await Data.GetStrategyTemplateAsync(templateId);
+            if (template == null) return;
+
+            strategy.Name = template.Name;
+            strategy.Description = template.Description;
+            strategy.LogicGroup = template.LogicGroup;
+            strategy.Conditions = template.Conditions.Select(c => new TriggerCondition
+            {
+                ConditionType = c.ConditionType, Operator = c.Operator,
+                Value = c.Value, Period = c.Period
+            }).ToList();
+            strategy.Actions = template.Actions.Select(a => new TradeAction
+            {
+                ActionType = a.ActionType, Side = a.Side,
+                QuantityType = a.QuantityType, Quantity = a.Quantity
+            }).ToList();
+            Snackbar.Add($"Template '{template.Name}' applied. Customize and save.", Severity.Info);
+        }
+        catch (Exception ex) { Snackbar.Add($"Failed to load template: {ex.Message}", Severity.Error); }
+    }
+
+    private void OnCompoundLogicToggled(bool value)
+    {
+        useCompoundLogic = value;
+        if (value && strategy.Conditions.Count > 0 && rootGroup.Conditions.Count == 0)
+        {
+            // Migrate existing flat conditions into the root group
+            rootGroup.Logic = strategy.LogicGroup;
+            rootGroup.Conditions = new List<TriggerCondition>(strategy.Conditions);
         }
     }
 
@@ -125,6 +224,9 @@
         {
             strategy.AccountId = AccountId;
             strategy.UserId = CurrentUser?.id ?? "";
+
+            // Write compound logic if enabled, else clear it
+            strategy.RootConditionGroup = useCompoundLogic ? rootGroup : null;
 
             if (isNew)
                 await Data.CreateStrategyAsync(strategy);

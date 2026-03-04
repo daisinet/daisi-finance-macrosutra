@@ -1,0 +1,196 @@
+@page "/marketplace/{Id}"
+@layout MacroSutra.Web.Components.Layout.LandingLayout
+@using MacroSutra.Core.Enums
+@using MacroSutra.Core.Models
+@using MacroSutra.Services
+@inject CommunityService CommunityService
+@inject NavigationManager Nav
+
+<PageTitle>@(strategy?.Name ?? "Strategy") — MacroSutra Marketplace</PageTitle>
+
+<section class="landing-section">
+    <div class="landing-container">
+        @if (loading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (strategy == null)
+        {
+            <MudAlert Severity="Severity.Warning">Strategy not found or is not public.</MudAlert>
+            <MudButton Variant="Variant.Text" Href="/marketplace" Class="mt-2">Back to Marketplace</MudButton>
+        }
+        else
+        {
+            <MudButton Variant="Variant.Text" Href="/marketplace" Class="mb-3">
+                <i class="fa-duotone fa-arrow-left me-1"></i> Back to Marketplace
+            </MudButton>
+
+            <MudText Typo="Typo.h4" Class="mb-1">@strategy.Name</MudText>
+            <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">Public</MudChip>
+                <MudText Typo="Typo.body2" Class="text-muted">@string.Join(", ", strategy.Symbols)</MudText>
+            </div>
+
+            @if (stats != null)
+            {
+                <MudGrid Class="mb-4">
+                    <MudItem xs="3">
+                        <MudPaper Class="pa-3 text-center">
+                            @if (stats.ReviewCount > 0)
+                            {
+                                <MudRating ReadOnly="true" SelectedValue="@((int)Math.Round(stats.AverageRating))" Size="Size.Small" />
+                                <MudText Typo="Typo.caption">@stats.AverageRating.ToString("N1") (@stats.ReviewCount reviews)</MudText>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.caption">No reviews yet</MudText>
+                            }
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="3">
+                        <MudPaper Class="pa-3 text-center">
+                            <MudText Typo="Typo.h6">@stats.SubscriberCount</MudText>
+                            <MudText Typo="Typo.caption">Subscribers</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="3">
+                        <MudPaper Class="pa-3 text-center">
+                            <MudText Typo="Typo.h6">@stats.ForkCount</MudText>
+                            <MudText Typo="Typo.caption">Forks</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="3">
+                        <MudPaper Class="pa-3 text-center">
+                            <MudText Typo="Typo.caption">Created</MudText>
+                            <MudText Typo="Typo.body2">@strategy.CreatedUtc.ToString("MMM dd, yyyy")</MudText>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            }
+
+            @if (!string.IsNullOrEmpty(strategy.Description))
+            {
+                <MudText Typo="Typo.subtitle1" Class="mb-1">Description</MudText>
+                <MudText Typo="Typo.body1" Class="mb-4">@strategy.Description</MudText>
+            }
+
+            @if (strategy.Conditions.Count > 0)
+            {
+                <MudText Typo="Typo.subtitle1" Class="mb-2">
+                    Conditions (@strategy.LogicGroup mode)
+                </MudText>
+                <MudSimpleTable Dense="true" Hover="true" Class="mb-4">
+                    <thead>
+                        <tr><th>Type</th><th>Operator</th><th>Value</th><th>Period</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in strategy.Conditions)
+                        {
+                            <tr>
+                                <td>@c.ConditionType</td>
+                                <td>@c.Operator</td>
+                                <td>@c.Value.ToString("N2")</td>
+                                <td>@(c.Period?.ToString() ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            }
+
+            @if (strategy.Actions.Count > 0)
+            {
+                <MudText Typo="Typo.subtitle1" Class="mb-2">Actions</MudText>
+                <MudSimpleTable Dense="true" Hover="true" Class="mb-4">
+                    <thead>
+                        <tr><th>Type</th><th>Side</th><th>Quantity</th><th>Sizing</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var a in strategy.Actions)
+                        {
+                            <tr>
+                                <td>@a.ActionType</td>
+                                <td>@a.Side</td>
+                                <td>@a.Quantity.ToString("N2")</td>
+                                <td>@a.QuantityType</td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            }
+
+            <MudDivider Class="my-4" />
+
+            <MudText Typo="Typo.subtitle1" Class="mb-2">Reviews</MudText>
+            @if (reviews.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Class="text-muted mb-2">No reviews yet.</MudText>
+            }
+            else
+            {
+                @foreach (var review in reviews)
+                {
+                    <MudPaper Class="pa-3 mb-2" Elevation="1">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <MudRating ReadOnly="true" SelectedValue="@review.Rating" Size="Size.Small" />
+                                <MudText Typo="Typo.caption" Class="ms-2">by @review.ReviewerName</MudText>
+                            </div>
+                            <MudText Typo="Typo.caption">@review.CreatedUtc.ToString("MMM dd, yyyy")</MudText>
+                        </div>
+                        @if (!string.IsNullOrEmpty(review.ReviewText))
+                        {
+                            <MudText Typo="Typo.body2" Class="mt-1">@review.ReviewText</MudText>
+                        }
+                    </MudPaper>
+                }
+            }
+
+            @if (strategy.SubscriptionCreditPrice > 0)
+            {
+                <MudDivider Class="my-4" />
+                <MudText Typo="Typo.subtitle1" Class="mb-2">Subscribe</MudText>
+                <MudAlert Severity="Severity.Info" Class="mb-2">
+                    <strong>@strategy.SubscriptionCreditPrice credits</strong> per @strategy.SubscriptionPeriodDays days — mirror trades, get email alerts, or receive webhooks when this strategy fires.
+                </MudAlert>
+            }
+            else
+            {
+                <MudDivider Class="my-4" />
+                <MudText Typo="Typo.subtitle1" Class="mb-2">Subscribe</MudText>
+                <MudAlert Severity="Severity.Success" Class="mb-2">
+                    <strong>Free</strong> — subscribe to mirror trades, get email alerts, or receive webhooks when this strategy fires.
+                </MudAlert>
+            }
+
+            <MudAlert Severity="Severity.Info" Class="mt-4">
+                <a href="@SsoLoginUrl">Log in</a> to subscribe, fork this strategy, or leave a review.
+            </MudAlert>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+
+    private TradingStrategy? strategy;
+    private StrategyCommunityStats? stats;
+    private List<StrategyReview> reviews = new();
+    private bool loading = true;
+
+    private string SsoLoginUrl => $"{Daisi.SDK.Models.DaisiStaticSettings.SsoAuthorityUrl}/sso/authorize?returnUrl={Uri.EscapeDataString(Nav.BaseUri + "sso/callback")}&origin={Uri.EscapeDataString(Nav.BaseUri)}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            strategy = await CommunityService.GetPublicStrategyAsync(Id);
+            if (strategy != null)
+            {
+                stats = await CommunityService.GetCommunityStatsAsync(Id);
+                reviews = await CommunityService.GetReviewsAsync(Id);
+            }
+        }
+        catch { }
+        loading = false;
+    }
+}

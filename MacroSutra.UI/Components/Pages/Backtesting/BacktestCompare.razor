@@ -1,0 +1,121 @@
+@page "/backtests/compare"
+
+<PageTitle>Compare Backtests — MacroSutra</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Compare Backtests</MudText>
+
+@if (results.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No backtests selected for comparison. Go to <MudLink Href="/backtests">Backtests</MudLink> and select items to compare.</MudAlert>
+}
+else
+{
+    <MudText Typo="Typo.subtitle1" Class="mb-3">Side-by-Side Metrics</MudText>
+    <MudSimpleTable Dense="true" Hover="true" Striped="true" Class="mb-6">
+        <thead>
+            <tr>
+                <th>Metric</th>
+                @foreach (var r in results)
+                {
+                    <th>@r.StrategyName (@r.Symbol)</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>Total Return %</td>@foreach (var r in results) { <td class="@ReturnClass(r.Metrics?.TotalReturnPercent)">@(r.Metrics?.TotalReturnPercent.ToString("F2") ?? "—")%</td> }</tr>
+            <tr><td>Sharpe Ratio</td>@foreach (var r in results) { <td>@(r.Metrics?.SharpeRatio.ToString("F2") ?? "—")</td> }</tr>
+            <tr><td>Max Drawdown %</td>@foreach (var r in results) { <td>@(r.Metrics?.MaxDrawdownPercent.ToString("F2") ?? "—")%</td> }</tr>
+            <tr><td>Win Rate %</td>@foreach (var r in results) { <td>@(r.Metrics?.WinRate.ToString("F1") ?? "—")%</td> }</tr>
+            <tr><td>Profit Factor</td>@foreach (var r in results) { <td>@(r.Metrics?.ProfitFactor.ToString("F2") ?? "—")</td> }</tr>
+            <tr><td>Total Trades</td>@foreach (var r in results) { <td>@(r.Metrics?.TotalTrades.ToString() ?? "—")</td> }</tr>
+            <tr><td>Final Equity</td>@foreach (var r in results) { <td>$@(r.Metrics?.FinalEquity.ToString("N2") ?? "—")</td> }</tr>
+            <tr><td>Initial Capital</td>@foreach (var r in results) { <td>$@r.InitialCapital.ToString("N2")</td> }</tr>
+            <tr><td>Date Range</td>@foreach (var r in results) { <td>@r.StartDate.ToString("MMM dd, yyyy") — @r.EndDate.ToString("MMM dd, yyyy")</td> }</tr>
+            <tr><td>Slippage (bps)</td>@foreach (var r in results) { <td>@r.SlippageBps</td> }</tr>
+            <tr><td>Commission/Trade</td>@foreach (var r in results) { <td>$@r.CommissionPerTrade.ToString("N2")</td> }</tr>
+        </tbody>
+    </MudSimpleTable>
+
+    <MudText Typo="Typo.subtitle1" Class="mb-3">Equity Curves (Overlaid)</MudText>
+    <MudPaper Class="pa-4" Outlined="true">
+        @foreach (var r in results)
+        {
+            <div class="d-flex align-center mb-1">
+                <MudChip T="string" Size="Size.Small" Color="@ChartColor(results.IndexOf(r))">@r.StrategyName (@r.Symbol)</MudChip>
+                @if (r.EquityCurve.Count > 0)
+                {
+                    <MudText Typo="Typo.caption" Class="ms-2">
+                        @r.EquityCurve.Count points, $@r.EquityCurve[0].Equity.ToString("N0") → $@r.EquityCurve[^1].Equity.ToString("N0")
+                    </MudText>
+                }
+            </div>
+        }
+        <MudSimpleTable Dense="true" Hover="true" Style="max-height: 400px; overflow-y: auto;" Class="mt-3">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    @foreach (var r in results)
+                    {
+                        <th>@r.StrategyName Equity</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var date in allDates.Take(500))
+                {
+                    <tr>
+                        <td>@date.ToString("MMM dd, yyyy")</td>
+                        @foreach (var r in results)
+                        {
+                            var point = r.EquityCurve.FirstOrDefault(p => p.Date == date);
+                            <td>@(point != null ? $"${point.Equity:N2}" : "—")</td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+}
+
+<MudButton Variant="Variant.Text" Href="/backtests" Class="mt-4">Back to Backtests</MudButton>
+
+@code {
+    [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
+    [Inject] private IDataProvider Data { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private List<BacktestResult> results = new();
+    private List<DateOnly> allDates = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var uri = new Uri(Nav.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        var ids = query["ids"]?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? [];
+
+        if (ids.Length == 0 || string.IsNullOrEmpty(AccountId)) return;
+
+        results.Clear();
+        allDates.Clear();
+
+        foreach (var id in ids)
+        {
+            var bt = await Data.GetBacktestAsync(id.Trim(), AccountId);
+            if (bt != null) results.Add(bt);
+        }
+
+        allDates = results.SelectMany(r => r.EquityCurve.Select(p => p.Date)).Distinct().OrderBy(d => d).ToList();
+    }
+
+    private static string ReturnClass(decimal? returnPct) =>
+        returnPct == null ? "" : returnPct >= 0 ? "mud-success-text" : "mud-error-text";
+
+    private static Color ChartColor(int index) => index switch
+    {
+        0 => Color.Primary,
+        1 => Color.Secondary,
+        2 => Color.Tertiary,
+        3 => Color.Info,
+        _ => Color.Default
+    };
+}

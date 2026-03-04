@@ -1,0 +1,209 @@
+@page "/backtests/{Id}"
+
+<PageTitle>Backtest Result — MacroSutra</PageTitle>
+
+@if (loading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (result == null)
+{
+    <MudText Color="Color.Error">Backtest not found.</MudText>
+}
+else
+{
+    <MudButton Variant="Variant.Text" Href="/backtests" Class="mb-2">
+        <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Class="me-1" /> Back to Backtests
+    </MudButton>
+
+    <MudText Typo="Typo.h4" Class="mb-1">@result.StrategyName</MudText>
+    <MudText Typo="Typo.subtitle1" Color="Color.Secondary" Class="mb-4">
+        @result.Symbol &middot; @result.StartDate.ToString("MMM dd, yyyy") — @result.EndDate.ToString("MMM dd, yyyy") &middot; Initial: @result.InitialCapital.ToString("C0")
+    </MudText>
+
+    @if (result.Metrics != null)
+    {
+        <!-- Metrics Cards -->
+        <MudGrid Class="mb-4">
+            <MudItem xs="6" sm="4" md="3" lg="2">
+                <MudPaper Class="pa-3" Elevation="1">
+                    <MudText Typo="Typo.caption">Total Return</MudText>
+                    <MudText Typo="Typo.h6" Color="@(result.Metrics.TotalReturnPercent >= 0 ? Color.Success : Color.Error)">
+                        @result.Metrics.TotalReturnPercent.ToString("F2")%
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" sm="4" md="3" lg="2">
+                <MudPaper Class="pa-3" Elevation="1">
+                    <MudText Typo="Typo.caption">Final Equity</MudText>
+                    <MudText Typo="Typo.h6">@result.Metrics.FinalEquity.ToString("C2")</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" sm="4" md="3" lg="2">
+                <MudPaper Class="pa-3" Elevation="1">
+                    <MudText Typo="Typo.caption">Max Drawdown</MudText>
+                    <MudText Typo="Typo.h6" Color="Color.Error">@result.Metrics.MaxDrawdownPercent.ToString("F2")%</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" sm="4" md="3" lg="2">
+                <MudPaper Class="pa-3" Elevation="1">
+                    <MudText Typo="Typo.caption">Sharpe Ratio</MudText>
+                    <MudText Typo="Typo.h6">@result.Metrics.SharpeRatio.ToString("F2")</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" sm="4" md="3" lg="2">
+                <MudPaper Class="pa-3" Elevation="1">
+                    <MudText Typo="Typo.caption">Win Rate</MudText>
+                    <MudText Typo="Typo.h6">@result.Metrics.WinRate.ToString("F1")%</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" sm="4" md="3" lg="2">
+                <MudPaper Class="pa-3" Elevation="1">
+                    <MudText Typo="Typo.caption">Profit Factor</MudText>
+                    <MudText Typo="Typo.h6">@(result.Metrics.ProfitFactor > 1000 ? "∞" : result.Metrics.ProfitFactor.ToString("F2"))</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" sm="4" md="3" lg="2">
+                <MudPaper Class="pa-3" Elevation="1">
+                    <MudText Typo="Typo.caption">Total Trades</MudText>
+                    <MudText Typo="Typo.h6">@result.Metrics.TotalTrades</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        @if (equityData.Length > 0)
+        {
+            <!-- Equity Curve -->
+            <MudText Typo="Typo.h6" Class="mb-2">Equity Curve</MudText>
+            <MudPaper Class="pa-3 mb-4" Elevation="1">
+                <MudChart ChartType="ChartType.Line" ChartSeries="@equitySeries" XAxisLabels="@equityLabels"
+                          Width="100%" Height="300px" ChartOptions="@equityOptions" />
+            </MudPaper>
+
+            <!-- Drawdown Chart -->
+            <MudText Typo="Typo.h6" Class="mb-2">Drawdown</MudText>
+            <MudPaper Class="pa-3 mb-4" Elevation="1">
+                <MudChart ChartType="ChartType.Line" ChartSeries="@drawdownSeries" XAxisLabels="@drawdownLabels"
+                          Width="100%" Height="200px" ChartOptions="@drawdownOptions" />
+            </MudPaper>
+        }
+    }
+
+    @if (result.Trades.Count > 0)
+    {
+        <!-- Trades Table -->
+        <MudText Typo="Typo.h6" Class="mb-2">Trades (@result.Trades.Count)</MudText>
+        <MudTable Items="@result.Trades" Hover="true" Striped="true" Dense="true">
+            <HeaderContent>
+                <MudTh>Side</MudTh>
+                <MudTh>Entry Date</MudTh>
+                <MudTh>Entry Price</MudTh>
+                <MudTh>Exit Date</MudTh>
+                <MudTh>Exit Price</MudTh>
+                <MudTh>Qty</MudTh>
+                <MudTh>P&L</MudTh>
+                <MudTh>Return %</MudTh>
+                <MudTh>Duration</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>
+                    <MudChip T="string" Size="Size.Small" Color="@(context.Side == TradeSide.Buy ? Color.Success : Color.Error)">
+                        @context.Side
+                    </MudChip>
+                </MudTd>
+                <MudTd>@context.EntryDate.ToString("MMM dd, yyyy")</MudTd>
+                <MudTd>@context.EntryPrice.ToString("C2")</MudTd>
+                <MudTd>@(context.ExitDate?.ToString("MMM dd, yyyy") ?? "—")</MudTd>
+                <MudTd>@(context.ExitPrice?.ToString("C2") ?? "—")</MudTd>
+                <MudTd>@context.Quantity.ToString("F2")</MudTd>
+                <MudTd>
+                    <MudText Color="@(context.PnL >= 0 ? Color.Success : Color.Error)">
+                        @(context.PnL?.ToString("C2") ?? "—")
+                    </MudText>
+                </MudTd>
+                <MudTd>
+                    <MudText Color="@(context.ReturnPercent >= 0 ? Color.Success : Color.Error)">
+                        @(context.ReturnPercent?.ToString("F2") ?? "—")%
+                    </MudText>
+                </MudTd>
+                <MudTd>
+                    @if (context.ExitDate.HasValue)
+                    {
+                        var days = context.ExitDate.Value.DayNumber - context.EntryDate.DayNumber;
+                        @($"{days}d")
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+
+    @if (result.Status == BacktestStatus.Failed)
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-4">@result.ErrorMessage</MudAlert>
+    }
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+    [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
+    [Inject] private IDataProvider Data { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+
+    private BacktestResult? result;
+    private bool loading = true;
+
+    // Chart data
+    private double[] equityData = [];
+    private List<ChartSeries> equitySeries = new();
+    private string[] equityLabels = [];
+    private ChartOptions equityOptions = new() { YAxisFormat = "C0" };
+
+    private double[] drawdownData = [];
+    private List<ChartSeries> drawdownSeries = new();
+    private string[] drawdownLabels = [];
+    private ChartOptions drawdownOptions = new() { YAxisFormat = "F1" };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(AccountId) || string.IsNullOrEmpty(Id)) return;
+        await LoadBacktest();
+    }
+
+    private async Task LoadBacktest()
+    {
+        loading = true;
+        try
+        {
+            result = await Data.GetBacktestAsync(Id, AccountId);
+            if (result?.EquityCurve?.Count > 0)
+                BuildCharts();
+        }
+        catch { Snackbar.Add("Failed to load backtest.", Severity.Error); }
+        finally { loading = false; }
+    }
+
+    private void BuildCharts()
+    {
+        if (result?.EquityCurve == null) return;
+
+        var curve = result.EquityCurve;
+
+        // Subsample for display if too many points (max 60 labels)
+        var step = Math.Max(1, curve.Count / 60);
+        var sampled = curve.Where((_, i) => i % step == 0 || i == curve.Count - 1).ToList();
+
+        equityData = sampled.Select(p => (double)p.Equity).ToArray();
+        equityLabels = sampled.Select(p => p.Date.ToString("MMM dd")).ToArray();
+        equitySeries = new List<ChartSeries>
+        {
+            new() { Name = "Equity", Data = equityData }
+        };
+
+        drawdownData = sampled.Select(p => (double)p.Drawdown).ToArray();
+        drawdownLabels = equityLabels;
+        drawdownSeries = new List<ChartSeries>
+        {
+            new() { Name = "Drawdown %", Data = drawdownData }
+        };
+    }
+}

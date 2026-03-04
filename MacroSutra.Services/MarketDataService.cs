@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Alpaca.Markets;
+using MacroSutra.Core.Enums;
 using MacroSutra.Core.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -67,6 +68,52 @@ public class MarketDataService
     }
 
     /// <summary>
+    /// Gets historical daily OHLCV bars for a symbol over a date range (no caching).
+    /// </summary>
+    public virtual async Task<List<OhlcvBar>> GetHistoricalBarsAsync(string symbol, DateOnly from, DateOnly to) =>
+        await GetHistoricalBarsAsync(symbol, from, to, Core.Enums.BarTimeFrame.Day);
+
+    /// <summary>
+    /// Gets historical OHLCV bars for a symbol over a date range with specified time frame (no caching).
+    /// </summary>
+    public virtual async Task<List<OhlcvBar>> GetHistoricalBarsAsync(string symbol, DateOnly from, DateOnly to, Core.Enums.BarTimeFrame timeFrame)
+    {
+        try
+        {
+            var alpacaTimeFrame = MapTimeFrame(timeFrame);
+            var request = new HistoricalBarsRequest(symbol,
+                from.ToDateTime(TimeOnly.MinValue),
+                to.ToDateTime(TimeOnly.MinValue),
+                alpacaTimeFrame);
+
+            var bars = await _dataClient.ListHistoricalBarsAsync(request);
+            return bars.Items.Select(b => new OhlcvBar(
+                DateOnly.FromDateTime(b.TimeUtc),
+                b.Open,
+                b.High,
+                b.Low,
+                b.Close,
+                (long)b.Volume
+            )
+            { Timestamp = b.TimeUtc }).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch historical bars for {Symbol} from {From} to {To} ({TimeFrame})", symbol, from, to, timeFrame);
+            return [];
+        }
+    }
+
+    private static Alpaca.Markets.BarTimeFrame MapTimeFrame(Core.Enums.BarTimeFrame tf) => tf switch
+    {
+        Core.Enums.BarTimeFrame.Hour => Alpaca.Markets.BarTimeFrame.Hour,
+        Core.Enums.BarTimeFrame.FifteenMinutes => new Alpaca.Markets.BarTimeFrame(15, Alpaca.Markets.BarTimeFrameUnit.Minute),
+        Core.Enums.BarTimeFrame.FiveMinutes => new Alpaca.Markets.BarTimeFrame(5, Alpaca.Markets.BarTimeFrameUnit.Minute),
+        Core.Enums.BarTimeFrame.OneMinute => Alpaca.Markets.BarTimeFrame.Minute,
+        _ => Alpaca.Markets.BarTimeFrame.Day
+    };
+
+    /// <summary>
     /// Gets historical daily close prices for a symbol (cached for 30s).
     /// Returns an array with the most recent price last.
     /// </summary>
@@ -78,7 +125,7 @@ public class MarketDataService
 
         try
         {
-            var request = new HistoricalBarsRequest(symbol, BarTimeFrame.Day)
+            var request = new HistoricalBarsRequest(symbol, Alpaca.Markets.BarTimeFrame.Day)
                 .WithPageSize((uint)barCount);
 
             var bars = await _dataClient.ListHistoricalBarsAsync(request);

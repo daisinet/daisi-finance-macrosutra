@@ -126,106 +126,145 @@ dotnet test MacroSutra.Tests
 
 ## Roadmap
 
-### Phase 1: Foundation
+### Phase 1: Foundation ✅
 
-- [ ] Core domain models — User, BrokerageAccount, TradingStrategy, Trigger, Trade, Position
-- [ ] Cosmos DB data layer with container-per-entity pattern
-- [ ] Service layer scaffold — account management, strategy CRUD
-- [ ] Shared Razor Class Library (`MacroSutra.UI`) with layout, navigation, and theme (MudBlazor)
-- [ ] Blazor Server web app (`MacroSutra.Web`) wired to services and data layer
-- [ ] MAUI Blazor Hybrid app (`MacroSutra.App`) scaffold with SDK client
-- [ ] SDK project with gRPC/REST API surface for MAUI communication
-- [ ] User authentication via Daisinet SSO (`AddDaisiForWeb()`)
+- [x] Core domain models — User, BrokerageAccount, TradingStrategy, Trade, Position, Subscription, BacktestResult
+- [x] 13 domain enums — TradeStatus, TradeSide, ConditionType, ConditionOperator, QuantityType, etc.
+- [x] Cosmos DB data layer — container-per-entity pattern with 7 partial classes, 60+ CRUD methods
+- [x] Service layer — 19 services covering all domain logic
+- [x] Shared Razor Class Library (`MacroSutra.UI`) — layout, navigation, MudBlazor theme, 12 pages
+- [x] Blazor Server web app (`MacroSutra.Web`) — wired to services and Cosmos DB
+- [x] MAUI Blazor Hybrid app (`MacroSutra.App`) — scaffold with SDK data provider
+- [x] SDK project (`MacroSutra.SDK`) — 7 REST clients, 32+ methods
+- [x] REST API — 27 Minimal API endpoints with API key authentication
+- [x] User authentication via Daisinet SSO (`AddDaisiForWeb()`)
+- [x] User management — roles (Viewer, Trader, Manager, Owner), team import from Daisinet
+- [x] Test suite — 171 tests across 19 test classes
 
-### Phase 2: Brokerage Integration
+### Phase 2: Brokerage Integration ✅
 
-- [x] `IBrokerageProvider` abstraction — connect, authenticate, get positions, place orders, get market data, get historical data
-- [x] Alpaca provider (primary — most developer-friendly, free, paper trading for dev)
-- [ ] Charles Schwab provider
-- [ ] Interactive Brokers provider
-- [ ] Tradier provider
-- [x] Webull provider (REST via HttpClient, sandbox mode, token refresh)
-- [x] Brokerage account linking UI — API key entry, credential validation, connection status
-- [x] Portfolio dashboard — unified view of positions, balances, and P&L across all linked brokerages
-- [x] Paper trading mode toggle per brokerage account
+- [x] `IBrokerageProvider` abstraction — validate, get positions, place orders, get order status, get balance, refresh credentials
+- [x] Alpaca provider — Alpaca.Markets SDK, paper + live trading
+- [x] Webull provider — REST via HttpClient, sandbox mode, OAuth token refresh
+- [x] Paper trading provider — mock provider for development and testing
+- [x] `BrokerageProviderFactory` — routes by `BrokerageProvider` enum via DI
+- [x] Brokerage account linking UI — provider-specific credential forms with validation
+- [x] Portfolio dashboard — unified positions, balances, P&L across all brokerages
 - [x] Position sync service — fetch remote positions, upsert/delete stale, cache balance
-- [x] Credential management — provider-specific credential forms with validation
+- [x] Credential management — per-provider credential schemas with encrypted storage
 
-### Phase 3: Trading Triggers & Strategy Engine
+### Phase 3: Strategy Engine ✅
 
-- [x] Market data service — Alpaca free data API for snapshots and historical bars with 30s in-memory cache
-- [x] Technical indicators — SMA, EMA, RSI, MACD calculated from historical price data
-- [x] Condition evaluator — evaluates Price, Volume, PercentChange, MovingAverage, RSI, MACD conditions
+- [x] Market data service — Alpaca free API for snapshots and historical bars, 30s in-memory cache
+- [x] Technical indicators — SMA, EMA, RSI, MACD, Bollinger Bands
+- [x] Condition evaluator — Price, Volume, PercentChange, MovingAverage, RSI, MACD conditions
 - [x] CrossesAbove/CrossesBelow operators — in-memory previous-value tracking for crossover detection
-- [x] Trade execution service — resolves Shares/DollarAmount/PercentOfPortfolio quantities, places orders via brokerage providers
+- [x] Trade execution service — resolves Shares/DollarAmount/PercentOfPortfolio quantities, places orders
 - [x] Alert actions — recorded as filled trades with descriptive notes
-- [x] Strategy evaluation engine — BackgroundService polling every 60s during US market hours (9:30-16:00 ET, Mon-Fri)
-- [x] AND/OR logic group evaluation — flat condition groups matching existing LogicGroup model
-- [x] Order status tracker — BackgroundService polling open orders every 30s, updates trade status from brokerage
-- [x] "Test Now" feature — manually evaluate a strategy against live data, shows per-condition pass/fail
+- [x] Strategy evaluation engine — BackgroundService polling every 60s during US market hours (9:30–16:00 ET, Mon–Fri)
+- [x] AND/OR logic group evaluation — flat condition groups with LogicGroup model
+- [x] Order status tracker — BackgroundService polling open orders every 30s
+- [x] "Test Now" — manual evaluation against live data with per-condition pass/fail
 - [x] Execution history — LastEvaluatedUtc and LastTriggeredUtc tracked per strategy
-- [x] Dashboard engine status indicator — shows running/stopped and last evaluation timestamp
-- [ ] Strategy builder UI — visual drag-and-drop trigger composition with live preview
-- [ ] Strategy templates — pre-built common strategies (stop-loss, trailing stop, mean reversion, momentum, breakout)
-- [ ] Time-based conditions — time-of-day, day-of-week, market open/close relative
+- [x] Dashboard engine status indicator
+
+### Phase 4: Backtesting ✅
+
+- [x] Historical data ingestion — daily OHLCV bars via Alpaca free data API
+- [x] Backtesting runtime — simulate strategy execution over any historical date range
+- [x] Performance metrics — total return, Sharpe ratio, max drawdown, win rate, profit factor, avg trade duration, best/worst trade
+- [x] Backtesting UI — date range picker, strategy selector, metric cards
+- [x] Equity curve visualization and drawdown chart (MudBlazor line charts)
+- [x] Trade-by-trade breakdown table with P&L, return %, duration
+- [x] Backtest persistence — Cosmos DB storage for later review
+- [x] SDK backtest client — full CRUD via MacroSutra SDK
+
+### Phase 5: Community & Marketplace ✅
+
+- [x] Strategy visibility — Private, Public, SubscribersOnly
+- [x] Strategy marketplace — browse public strategies with pagination and sorting at `/marketplace`
+- [x] Strategy detail page — conditions, actions, community stats, reviews at `/marketplace/{id}`
+- [x] Fork strategy — deep copy with attribution tracking
+- [x] Ratings and reviews — 1–5 stars, one per account, denormalized community stats
+- [x] Leaderboard — ranked by Sharpe, return, or win rate at `/leaderboard` (5-min cache)
+- [x] Community Cosmos container — reviews and stats partitioned by StrategyId
+- [x] SDK community client and public API endpoints
+
+### Phase 6: Subscriptions & Alerts ✅
+
+- [x] Subscription model — Mirror, ScaledMirror, Email, Webhook action types
+- [x] Daisi Credits billing — MarketplaceClientFactory integration, daily renewal via ORC
+- [x] Email alerts — SendGrid v3 API
+- [x] Webhook dispatch — POST JSON with 10s timeout
+- [x] Trade mimic engine — SubscriptionDispatchService with quantity scaling
+- [x] Subscription management UI — My Subscriptions / My Subscribers tabs, expandable action history
+- [x] Subscribe dialog — action type selector, conditional fields, credit price display
+- [x] Subscription pricing — publisher sets SubscriptionCreditPrice and SubscriptionPeriodDays
+- [x] SDK subscription client and API endpoints
+
+### Phase 7: Finish What We Started
+
+Complete the gaps left in Phases 2–6.
+
+**Strategy engine gaps (Phase 3):**
+- [ ] Strategy templates — pre-built stop-loss, trailing stop, mean reversion, momentum, breakout strategies
+- [ ] Time-based conditions — time-of-day, day-of-week, market open/close relative triggers
 - [ ] Compound trigger logic — nested condition groups (currently flat AND/OR per strategy)
 
-### Phase 4: Backtesting Engine
+**Backtesting gaps (Phase 4):**
+- [ ] Backtest comparison mode — run multiple strategies side-by-side against the same data
+- [ ] Walk-forward analysis — out-of-sample testing with rolling windows
+- [ ] Slippage and commission modeling — configurable cost assumptions
+- [ ] Intraday bars — sub-daily time resolution for backtests
 
-- [ ] Historical data ingestion from brokerage APIs and market data providers
-- [ ] Backtesting runtime — simulate strategy execution over any historical date range
-- [ ] Performance metrics — total return, annualized return, Sharpe ratio, max drawdown, win rate, profit factor, average trade duration
-- [ ] Backtesting UI — date range picker, strategy selector, results dashboard with charts
-- [ ] Equity curve visualization and drawdown chart
-- [ ] Trade-by-trade breakdown table
-- [ ] Comparison mode — run multiple strategies side-by-side against the same data
-- [ ] Walk-forward analysis and out-of-sample testing support
+**MAUI app gaps:**
+- [ ] SDK strategy activate/deactivate endpoints
+- [ ] SDK brokerage account CRUD endpoints (create, update, deactivate, validate+link)
+- [ ] SdkDataProvider implementations for all 7 stubbed methods
 
-### Phase 5: Strategy Sharing & Community
+**Subscription gaps (Phase 6):**
+- [ ] Push notifications — APNs (iOS) and FCM (Android) for MAUI trade alerts
 
-- [ ] Privacy controls — per-strategy and per-trade visibility toggle (private/public/subscribers-only)
-- [ ] Strategy marketplace — browse, search, and filter community strategies by performance, asset class, risk level
-- [ ] Strategy detail page — description, backtest results, live performance, author profile
-- [ ] Fork strategy — copy a public strategy and modify it for personal use
-- [ ] Strategy ratings and reviews
-- [ ] Leaderboard — top-performing public strategies ranked by returns, Sharpe ratio, consistency
+**Documentation gaps:**
+- [ ] Fix landing page — remove AI marketing claims until Phase 9 ships
+- [ ] LearnSdk.razor — expand to cover all 7 SDK clients (currently only shows basic strategy + trade)
+- [ ] Add Learn page for backtesting
+- [ ] Add Learn page for strategy conditions and actions reference
 
-### Phase 6: Trade Subscriptions & Alerts
+### Phase 8: Additional Brokerages
 
-- [ ] Subscription model — subscribe to a trader, choose alert actions, set credit price
-- [ ] Daisi Credits integration — subscriber payment, sharer RevShare earnings via `MarketplaceService`
-- [ ] Email alerts — real-time email when followed trader executes a trade
-- [ ] Push notifications — MAUI app push via platform notification services
-- [ ] Trade mimic engine — automatically replicate trades on subscriber's brokerage (proportional sizing or fixed quantity)
-- [ ] Webhook action — POST trade data to subscriber-configured URL
-- [ ] Subscription management UI — active subscriptions, billing history, action preferences
-- [ ] Sharer dashboard — subscriber count, earnings, payout history
-
-### Phase 7: Additional Brokerages
-
-- [x] Webull provider (moved to Phase 2)
+- [ ] Charles Schwab provider
+- [ ] Interactive Brokers provider (TWS API)
+- [ ] Tradier provider
 - [ ] TradeStation provider
 - [ ] Tastytrade provider
 - [ ] Public.com provider
-- [ ] moomoo (Futu OpenAPI) provider
+- [ ] moomoo / Futu OpenAPI provider
 - [ ] Robinhood provider (crypto only, pending stock API availability)
-- [ ] Provider health monitoring and failover
+- [ ] Provider health monitoring and automatic failover
 
-### Phase 8: Bot Tools & AI Features
+### Phase 9: Bot Tools & AI Features
 
-- [ ] Daisinet bot tools — query portfolio, check triggers, get strategy performance, execute trades via bot
-- [ ] AI strategy suggestions — analyze portfolio and market conditions to recommend trigger configurations
-- [ ] Natural language strategy builder — describe a trading strategy in plain English, AI generates trigger rules
+- [ ] Daisinet bot tools (`MacroSutra.Tools`) — query portfolio, check triggers, get performance, execute trades via bot
+- [ ] AI strategy suggestions — analyze portfolio and market conditions to recommend triggers
+- [ ] Natural language strategy builder — describe strategy in English, AI generates rules
 - [ ] AI risk assessment — evaluate strategy risk profile and suggest adjustments
-- [ ] Market sentiment analysis — AI-powered news and social sentiment signals as trigger inputs
+- [ ] Market sentiment analysis — news and social sentiment as trigger inputs
+- [ ] Update landing page with accurate AI feature descriptions
 
-### Phase 9: Advanced Features
+### Phase 10: Advanced Strategy Builder
 
-- [ ] Multi-leg options strategy support (spreads, straddles, iron condors)
+- [ ] Visual drag-and-drop strategy builder UI with live preview
+- [ ] Strategy templates gallery — browse, preview, and fork starter strategies
+- [ ] Condition builder wizard — step-by-step guided condition creation
+- [ ] Live strategy preview — show simulated triggers against recent market data
+
+### Phase 11: Advanced Trading Features
+
+- [ ] Multi-leg options support (spreads, straddles, iron condors)
 - [ ] Fractional share support where brokerage allows
 - [ ] Dollar-cost averaging automation
 - [ ] Portfolio rebalancing triggers
 - [ ] Tax-loss harvesting suggestions
 - [ ] Advanced charting with TradingView integration
 - [ ] Export trades to CSV/PDF for tax reporting
-- [ ] User management — roles (Owner/Trader/Viewer), per-account access controls

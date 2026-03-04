@@ -4,36 +4,128 @@
 
 <MudText Typo="Typo.h4" Class="mb-4">Subscriptions</MudText>
 
-<MudTable Items="@subscriptions" Hover="true" Striped="true" Dense="true" Loading="@loading">
-    <HeaderContent>
-        <MudTh>Strategy</MudTh>
-        <MudTh>Publisher</MudTh>
-        <MudTh>Action</MudTh>
-        <MudTh>Scale</MudTh>
-        <MudTh>Active</MudTh>
-        <MudTh></MudTh>
-    </HeaderContent>
-    <RowTemplate>
-        <MudTd>@context.StrategyId</MudTd>
-        <MudTd>@context.PublisherAccountId</MudTd>
-        <MudTd>@context.ActionType</MudTd>
-        <MudTd>@(context.ScaleFactor.ToString("P0"))</MudTd>
-        <MudTd>
-            <MudIcon Icon="@(context.IsActive ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
-                     Color="@(context.IsActive ? Color.Success : Color.Error)" />
-        </MudTd>
-        <MudTd>
-            @if (context.IsActive)
-            {
-                <MudButton Size="Size.Small" Color="Color.Error" Variant="Variant.Text"
-                           OnClick="@(() => Cancel(context))">Cancel</MudButton>
-            }
-        </MudTd>
-    </RowTemplate>
-    <NoRecordsContent>
-        <MudText Color="Color.Secondary">No subscriptions yet.</MudText>
-    </NoRecordsContent>
-</MudTable>
+<MudTabs Rounded="true" ApplyEffectsToContainer="true" Class="mb-4">
+    <MudTabPanel Text="My Subscriptions" Icon="@Icons.Material.Filled.Subscriptions">
+        <MudTable Items="@subscriptions" Hover="true" Striped="true" Dense="true" Loading="@loading">
+            <HeaderContent>
+                <MudTh>Strategy</MudTh>
+                <MudTh>Publisher</MudTh>
+                <MudTh>Action</MudTh>
+                <MudTh>Scale</MudTh>
+                <MudTh>Credits</MudTh>
+                <MudTh>Active</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.StrategyName</MudTd>
+                <MudTd>@context.PublisherName</MudTd>
+                <MudTd>
+                    <MudChip T="string" Size="Size.Small" Color="@ActionTypeColor(context.ActionType)">
+                        @context.ActionType
+                    </MudChip>
+                </MudTd>
+                <MudTd>@(context.ActionType is SubscriptionActionType.Mirror or SubscriptionActionType.ScaledMirror ? context.ScaleFactor.ToString("P0") : "—")</MudTd>
+                <MudTd>@(context.CreditPrice > 0 ? context.CreditPrice.ToString("N0") : "Free")</MudTd>
+                <MudTd>
+                    <MudIcon Icon="@(context.IsActive ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                             Color="@(context.IsActive ? Color.Success : Color.Error)" />
+                </MudTd>
+                <MudTd>
+                    @if (context.IsActive)
+                    {
+                        <MudButton Size="Size.Small" Color="Color.Error" Variant="Variant.Text"
+                                   OnClick="@(() => Cancel(context))">Cancel</MudButton>
+                    }
+                    <MudButton Size="Size.Small" Color="Color.Default" Variant="Variant.Text"
+                               OnClick="@(() => ToggleActions(context.id))">
+                        @(expandedSubscriptionId == context.id ? "Hide" : "Actions")
+                    </MudButton>
+                </MudTd>
+            </RowTemplate>
+            <ChildRowContent>
+                @if (expandedSubscriptionId == context.id)
+                {
+                    <MudTr>
+                        <td colspan="7">
+                            <MudPaper Class="pa-3 ma-2" Elevation="0" Outlined="true">
+                                @if (actionsLoading)
+                                {
+                                    <MudProgressLinear Indeterminate="true" Size="Size.Small" />
+                                }
+                                else if (actions.Count == 0)
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">No actions recorded yet.</MudText>
+                                }
+                                else
+                                {
+                                    <MudSimpleTable Dense="true" Hover="true">
+                                        <thead>
+                                            <tr><th>Time</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Result</th><th>Details</th></tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var action in actions.Take(10))
+                                            {
+                                                <tr>
+                                                    <td>@action.ExecutedUtc.ToString("g")</td>
+                                                    <td>@action.Symbol</td>
+                                                    <td>@action.Side</td>
+                                                    <td>@action.Quantity.ToString("N2")</td>
+                                                    <td>
+                                                        <MudChip T="string" Size="Size.Small" Color="@(action.Success ? Color.Success : Color.Error)">
+                                                            @(action.Success ? "OK" : "Failed")
+                                                        </MudChip>
+                                                    </td>
+                                                    <td>@(action.ErrorMessage ?? "—")</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </MudSimpleTable>
+                                }
+                            </MudPaper>
+                        </td>
+                    </MudTr>
+                }
+            </ChildRowContent>
+            <NoRecordsContent>
+                <MudText Color="Color.Secondary">No subscriptions yet. Browse the <MudLink Href="/marketplace">Marketplace</MudLink> to subscribe to strategies.</MudText>
+            </NoRecordsContent>
+        </MudTable>
+    </MudTabPanel>
+
+    <MudTabPanel Text="My Subscribers" Icon="@Icons.Material.Filled.Group">
+        <MudTable Items="@publisherSubscriptions" Hover="true" Striped="true" Dense="true" Loading="@publisherLoading"
+                  GroupBy="@(new TableGroupDefinition<Subscription> { GroupName = "Strategy", Selector = s => s.StrategyName })">
+            <HeaderContent>
+                <MudTh>Strategy</MudTh>
+                <MudTh>Subscriber</MudTh>
+                <MudTh>Action</MudTh>
+                <MudTh>Credits</MudTh>
+                <MudTh>Since</MudTh>
+            </HeaderContent>
+            <GroupHeaderTemplate>
+                <MudTh colspan="5">
+                    <MudText Typo="Typo.subtitle2">
+                        @context.Key — @context.Items.Count() active subscriber(s)
+                    </MudText>
+                </MudTh>
+            </GroupHeaderTemplate>
+            <RowTemplate>
+                <MudTd>@context.StrategyName</MudTd>
+                <MudTd>@context.AccountId</MudTd>
+                <MudTd>
+                    <MudChip T="string" Size="Size.Small" Color="@ActionTypeColor(context.ActionType)">
+                        @context.ActionType
+                    </MudChip>
+                </MudTd>
+                <MudTd>@(context.CreditPrice > 0 ? context.CreditPrice.ToString("N0") : "Free")</MudTd>
+                <MudTd>@context.CreatedUtc.ToString("MMM dd, yyyy")</MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Color="Color.Secondary">No subscribers yet. Publish strategies in the marketplace to attract subscribers.</MudText>
+            </NoRecordsContent>
+        </MudTable>
+    </MudTabPanel>
+</MudTabs>
 
 @code {
     [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
@@ -41,15 +133,37 @@
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
 
     private List<Subscription> subscriptions = new();
+    private List<Subscription> publisherSubscriptions = new();
+    private List<SubscriptionAction> actions = new();
+    private string? expandedSubscriptionId;
     private bool loading = true;
+    private bool publisherLoading = true;
+    private bool actionsLoading;
 
     protected override async Task OnParametersSetAsync()
     {
         if (string.IsNullOrEmpty(AccountId)) return;
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
         loading = true;
-        try { subscriptions = await Data.GetSubscriptionsAsync(AccountId); }
+        publisherLoading = true;
+        try
+        {
+            var subTask = Data.GetSubscriptionsAsync(AccountId);
+            var pubTask = Data.GetPublisherSubscriptionsAsync(AccountId);
+            await Task.WhenAll(subTask, pubTask);
+            subscriptions = subTask.Result;
+            publisherSubscriptions = pubTask.Result;
+        }
         catch { }
-        finally { loading = false; }
+        finally
+        {
+            loading = false;
+            publisherLoading = false;
+        }
     }
 
     private async Task Cancel(Subscription sub)
@@ -58,8 +172,35 @@
         {
             await Data.CancelSubscriptionAsync(sub.id, AccountId);
             Snackbar.Add("Subscription cancelled.", Severity.Success);
-            subscriptions = await Data.GetSubscriptionsAsync(AccountId);
+            await LoadDataAsync();
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
     }
+
+    private async Task ToggleActions(string subscriptionId)
+    {
+        if (expandedSubscriptionId == subscriptionId)
+        {
+            expandedSubscriptionId = null;
+            return;
+        }
+
+        expandedSubscriptionId = subscriptionId;
+        actionsLoading = true;
+        try
+        {
+            actions = await Data.GetSubscriptionActionsAsync(AccountId, subscriptionId);
+        }
+        catch { actions = new(); }
+        finally { actionsLoading = false; }
+    }
+
+    private static Color ActionTypeColor(SubscriptionActionType type) => type switch
+    {
+        SubscriptionActionType.Mirror => Color.Primary,
+        SubscriptionActionType.ScaledMirror => Color.Info,
+        SubscriptionActionType.Email or SubscriptionActionType.Alert => Color.Warning,
+        SubscriptionActionType.Webhook => Color.Secondary,
+        _ => Color.Default
+    };
 }

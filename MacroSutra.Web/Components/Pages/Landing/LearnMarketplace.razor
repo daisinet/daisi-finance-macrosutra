@@ -1,0 +1,123 @@
+@page "/learn/marketplace"
+@layout MacroSutra.Web.Components.Layout.LandingLayout
+
+<PageTitle>MacroSutra - Strategy Marketplace Guide</PageTitle>
+
+<section class="landing-section">
+    <div class="landing-container">
+        <h1>Strategy Marketplace</h1>
+        <p>The MacroSutra marketplace is where traders share, discover, and build on each other's strategies. This guide explains how everything works.</p>
+
+        <h2 id="visibility" class="mt-4">Strategy Visibility</h2>
+        <p>Every strategy has a visibility setting that controls who can see it:</p>
+        <ul>
+            <li><strong>Private</strong> (default) — Only you and your team members can see this strategy.</li>
+            <li><strong>Public</strong> — Anyone can view, fork, and review this strategy in the marketplace.</li>
+            <li><strong>Subscribers Only</strong> — Only users subscribed to your account can see this strategy.</li>
+        </ul>
+        <p>Change visibility in the strategy editor under the <strong>Visibility</strong> dropdown. Changes take effect immediately.</p>
+
+        <h2 id="browsing" class="mt-4">Browsing the Marketplace</h2>
+        <p>Visit <a href="/marketplace">/marketplace</a> to browse all public strategies. No login required.</p>
+        <p>Each strategy card shows:</p>
+        <ul>
+            <li>Strategy name and monitored symbols</li>
+            <li>Average star rating and review count</li>
+            <li>Number of forks and subscribers</li>
+        </ul>
+        <p>Click a strategy to see its full detail page with conditions, actions, and reviews.</p>
+
+        <h2 id="forking" class="mt-4">Forking Strategies</h2>
+        <p>Forking creates a private copy of a public strategy in your account. You can then modify it freely without affecting the original.</p>
+        <h3 class="mt-3">How It Works</h3>
+        <ol>
+            <li>The fork copies all conditions, actions, symbols, and settings from the original.</li>
+            <li>The forked strategy is set to <strong>Private</strong> and <strong>Inactive</strong> by default.</li>
+            <li>A link to the original strategy is preserved (visible in the strategy editor).</li>
+            <li>The original strategy's fork count increases by one.</li>
+        </ol>
+        <h3 class="mt-3">What You Can Change</h3>
+        <p>Everything — the fork is your strategy now. Change symbols, conditions, actions, sizing mode, visibility, or anything else.</p>
+
+        <h2 id="reviews" class="mt-4">Ratings and Reviews</h2>
+        <p>Logged-in users can rate and review any public strategy they don't own.</p>
+        <ul>
+            <li><strong>Rating</strong> — 1 to 5 stars (required).</li>
+            <li><strong>Review text</strong> — Optional written feedback.</li>
+            <li><strong>One review per account</strong> — You can edit or delete your review at any time.</li>
+        </ul>
+        <p>Reviews help the community identify high-quality strategies. The average rating and review count appear on marketplace cards and the leaderboard.</p>
+
+        <h2 id="leaderboard" class="mt-4">Strategy Leaderboard</h2>
+        <p>The <a href="/leaderboard">leaderboard</a> ranks public strategies by backtested performance. Only strategies with at least one completed backtest are eligible.</p>
+        <h3 class="mt-3">Ranking Metrics</h3>
+        <ul>
+            <li><strong>Sharpe Ratio</strong> — Risk-adjusted return. Higher means better return per unit of risk. This is the default sort.</li>
+            <li><strong>Total Return %</strong> — Raw percentage gain from the best backtest.</li>
+            <li><strong>Win Rate</strong> — Percentage of profitable trades in the best backtest.</li>
+        </ul>
+        <p>The leaderboard is cached for 5 minutes to keep the page fast. New backtest results appear within that window.</p>
+
+        <h2 id="subscriptions" class="mt-4">Trade Subscriptions</h2>
+        <p>Subscriptions let you follow another trader's strategy and automatically act when their strategy fires a trade.</p>
+
+        <h3 class="mt-3">Subscription Actions</h3>
+        <ul>
+            <li><strong>Mirror</strong> — Execute the same trade on your brokerage account. You select which brokerage account to use.</li>
+            <li><strong>Scaled Mirror</strong> — Mirror the trade but scale the quantity. For example, if the publisher buys 100 shares and your scale factor is 0.5, you buy 50 shares.</li>
+            <li><strong>Email Alert</strong> — Receive an email notification with the trade details (symbol, side, quantity, price).</li>
+            <li><strong>Webhook</strong> — Receive a POST request at your URL with a JSON payload containing the trade data. Useful for integrating with bots, Discord, Slack, or custom systems.</li>
+        </ul>
+
+        <h3 class="mt-3">Credit Pricing</h3>
+        <p>Publishers can set a credit price for their strategies. When you subscribe, the credits are deducted from your Daisinet balance. Subscriptions renew automatically based on the publisher's billing period (default 30 days).</p>
+        <p>Free strategies (credit price = 0) can be subscribed to without any charge.</p>
+
+        <h3 class="mt-3">Webhook Payload</h3>
+        <p>When using the Webhook action, MacroSutra POSTs the following JSON to your URL with a 10-second timeout:</p>
+        <pre><code>{
+  "event": "trade_executed",
+  "strategyId": "str-abc123",
+  "strategyName": "My Strategy",
+  "symbol": "AAPL",
+  "side": "Buy",
+  "quantity": 10,
+  "price": 150.25,
+  "executedUtc": "2026-03-03T14:30:00Z"
+}</code></pre>
+
+        <h2 id="sdk" class="mt-4">SDK Access</h2>
+        <p>All marketplace features are available via the MacroSutra SDK:</p>
+        <pre><code>using var client = new MacroSutraClient("https://your-instance", "your-key");
+
+// Browse public strategies (no auth required for GET endpoints)
+var strategies = await client.Community.GetPublicStrategiesAsync();
+
+// Get leaderboard
+var leaderboard = await client.Community.GetLeaderboardAsync("sharpe", 10);
+
+// Fork a strategy (requires auth)
+var forked = await client.Community.ForkStrategyAsync("strategy-id");
+
+// Leave a review (requires auth)
+var review = await client.Community.CreateReviewAsync("strategy-id",
+    new CreateReviewRequest { Rating = 5, Text = "Excellent!" });
+
+// Subscribe to a strategy
+var subscription = await client.Subscriptions.SubscribeAsync(
+    new CreateSubscriptionRequest
+    {
+        StrategyId = "strategy-id",
+        ActionType = "Email",
+        NotificationEmail = "me@example.com"
+    });
+
+// List your subscriptions
+var mySubscriptions = await client.Subscriptions.GetSubscriptionsAsync();
+
+// Cancel a subscription
+await client.Subscriptions.CancelAsync("subscription-id");</code></pre>
+
+        <p class="mt-4"><a href="/learn">&larr; Back to Learn</a></p>
+    </div>
+</section>

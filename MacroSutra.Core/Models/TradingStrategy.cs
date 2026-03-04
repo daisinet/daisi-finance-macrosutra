@@ -24,6 +24,13 @@ public class TradingStrategy
     public LogicGroupType LogicGroup { get; set; } = LogicGroupType.And;
     public List<TriggerCondition> Conditions { get; set; } = new();
     public List<TradeAction> Actions { get; set; } = new();
+
+    /// <summary>
+    /// Optional nested condition group for compound logic.
+    /// When non-null, evaluation uses recursive group logic instead of flat Conditions + LogicGroup.
+    /// Nullable for backward compatibility with existing Cosmos documents.
+    /// </summary>
+    public ConditionGroup? RootConditionGroup { get; set; }
     public SizingMode SizingMode { get; set; } = SizingMode.Fixed;
 
     /// <summary>
@@ -32,7 +39,43 @@ public class TradingStrategy
     public string? BrokerageAccountId { get; set; }
 
     public bool IsActive { get; set; }
-    public bool IsPublic { get; set; }
+
+    /// <summary>
+    /// Strategy visibility: Private, Public, or SubscribersOnly.
+    /// </summary>
+    public StrategyVisibility Visibility { get; set; } = StrategyVisibility.Private;
+
+    /// <summary>
+    /// Backward-compatible computed property.
+    /// Reading: true when Visibility is Public.
+    /// Writing: sets Visibility to Public (true) or Private (false).
+    /// </summary>
+    public bool IsPublic
+    {
+        get => Visibility == StrategyVisibility.Public;
+        set => Visibility = value ? StrategyVisibility.Public : StrategyVisibility.Private;
+    }
+
+    /// <summary>
+    /// If this strategy was forked, the id of the original strategy.
+    /// </summary>
+    public string? ForkedFromStrategyId { get; set; }
+
+    /// <summary>
+    /// If this strategy was forked, the account id of the original author.
+    /// </summary>
+    public string? ForkedFromAccountId { get; set; }
+
+    /// <summary>
+    /// Credit price per subscription period (publisher-set, 0 = free).
+    /// </summary>
+    public long SubscriptionCreditPrice { get; set; }
+
+    /// <summary>
+    /// Subscription billing period in days (default 30).
+    /// </summary>
+    public int SubscriptionPeriodDays { get; set; } = 30;
+
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedUtc { get; set; }
 

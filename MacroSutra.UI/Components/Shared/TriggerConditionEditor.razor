@@ -10,19 +10,41 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" md="3">
-                <MudSelect @bind-Value="Condition.Operator" Label="Operator" Dense="true">
-                    @foreach (var op in Enum.GetValues<ConditionOperator>())
+                <MudSelect @bind-Value="Condition.Operator" Label="@OperatorLabel" Dense="true">
+                    @foreach (var op in GetOperatorsForType())
                     {
-                        <MudSelectItem Value="@op">@op</MudSelectItem>
+                        <MudSelectItem Value="@op">@FormatOperator(op)</MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" md="2">
-                <MudNumericField @bind-Value="Condition.Value" Label="Value" Dense="true" />
+                @if (Condition.ConditionType == ConditionType.TimeOfDay)
+                {
+                    <MudTimePicker Label="Time (ET)" Time="TimeValue" TimeChanged="OnTimeChanged" Dense="true" />
+                }
+                else if (Condition.ConditionType == ConditionType.DayOfWeek)
+                {
+                    <MudSelect T="decimal" Value="Condition.Value" ValueChanged="@(v => Condition.Value = v)" Label="Day" Dense="true">
+                        <MudSelectItem T="decimal" Value="0m">Sunday</MudSelectItem>
+                        <MudSelectItem T="decimal" Value="1m">Monday</MudSelectItem>
+                        <MudSelectItem T="decimal" Value="2m">Tuesday</MudSelectItem>
+                        <MudSelectItem T="decimal" Value="3m">Wednesday</MudSelectItem>
+                        <MudSelectItem T="decimal" Value="4m">Thursday</MudSelectItem>
+                        <MudSelectItem T="decimal" Value="5m">Friday</MudSelectItem>
+                        <MudSelectItem T="decimal" Value="6m">Saturday</MudSelectItem>
+                    </MudSelect>
+                }
+                else
+                {
+                    <MudNumericField @bind-Value="Condition.Value" Label="Value" Dense="true" />
+                }
             </MudItem>
-            <MudItem xs="12" md="2">
-                <MudNumericField @bind-Value="Condition.Period" Label="Period" Dense="true" />
-            </MudItem>
+            @if (!IsTimeCondition)
+            {
+                <MudItem xs="12" md="2">
+                    <MudNumericField @bind-Value="Condition.Period" Label="Period" Dense="true" />
+                </MudItem>
+            }
             <MudItem xs="12" md="2" Class="d-flex align-end">
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="OnRemove" />
             </MudItem>
@@ -33,4 +55,46 @@
 @code {
     [Parameter] public TriggerCondition Condition { get; set; } = new();
     [Parameter] public EventCallback OnRemove { get; set; }
+
+    private bool IsTimeCondition => Condition.ConditionType is ConditionType.TimeOfDay or ConditionType.DayOfWeek;
+    private string OperatorLabel => IsTimeCondition ? "When" : "Operator";
+
+    private TimeSpan? TimeValue
+    {
+        get
+        {
+            var minutes = (int)Condition.Value;
+            return new TimeSpan(minutes / 60, minutes % 60, 0);
+        }
+    }
+
+    private void OnTimeChanged(TimeSpan? time)
+    {
+        if (time.HasValue)
+            Condition.Value = (decimal)(time.Value.Hours * 60 + time.Value.Minutes);
+    }
+
+    private ConditionOperator[] GetOperatorsForType()
+    {
+        if (IsTimeCondition)
+            return [ConditionOperator.GreaterThan, ConditionOperator.LessThan, ConditionOperator.GreaterThanOrEqual, ConditionOperator.LessThanOrEqual, ConditionOperator.Equal];
+        return Enum.GetValues<ConditionOperator>();
+    }
+
+    private string FormatOperator(ConditionOperator op)
+    {
+        if (IsTimeCondition)
+        {
+            return op switch
+            {
+                ConditionOperator.GreaterThan => "> (After)",
+                ConditionOperator.LessThan => "< (Before)",
+                ConditionOperator.Equal => "= (At)",
+                ConditionOperator.GreaterThanOrEqual => ">= (At or After)",
+                ConditionOperator.LessThanOrEqual => "<= (At or Before)",
+                _ => op.ToString()
+            };
+        }
+        return op.ToString();
+    }
 }

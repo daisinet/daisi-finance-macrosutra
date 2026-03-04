@@ -20,7 +20,15 @@
         <MudTh>Actions</MudTh>
     </HeaderContent>
     <RowTemplate>
-        <MudTd>@context.Name</MudTd>
+        <MudTd>
+            @context.Name
+            @if (!string.IsNullOrEmpty(context.ForkedFromStrategyId))
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">
+                    <i class="fa-duotone fa-code-fork me-1"></i> Forked
+                </MudChip>
+            }
+        </MudTd>
         <MudTd>
             @foreach (var sym in context.Symbols)
             {

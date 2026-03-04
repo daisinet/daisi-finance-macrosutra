@@ -1,0 +1,177 @@
+@page "/backtests/walk-forward"
+
+<PageTitle>Walk-Forward Analysis — MacroSutra</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Walk-Forward Analysis</MudText>
+<MudText Typo="Typo.body2" Class="mb-4">
+    Slides a rolling window across historical data, running in-sample and out-of-sample backtests
+    to measure strategy robustness and avoid overfitting.
+</MudText>
+
+<MudCard Class="mb-6">
+    <MudCardContent>
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudSelect T="string" Label="Strategy" @bind-Value="strategyId" Required="true">
+                    @foreach (var s in strategies)
+                    {
+                        <MudSelectItem Value="@s.id">@s.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudTextField T="string" Label="Symbol" @bind-Value="symbol" Required="true" Placeholder="e.g. AAPL" />
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudDatePicker Label="Start Date" @bind-Date="startDate" />
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudDatePicker Label="End Date" @bind-Date="endDate" />
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudNumericField T="decimal" Label="Initial Capital ($)" @bind-Value="initialCapital" Min="100" />
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudNumericField T="int" Label="In-Sample Days" @bind-Value="inSampleDays" Min="30" />
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudNumericField T="int" Label="Out-of-Sample Days" @bind-Value="outOfSampleDays" Min="5" />
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudNumericField T="decimal" Label="Slippage (bps)" @bind-Value="slippageBps" Min="0" />
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudNumericField T="decimal" Label="Commission ($)" @bind-Value="commissionPerTrade" Min="0" />
+            </MudItem>
+            <MudItem xs="12" md="2" Class="d-flex align-end">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Run" Disabled="@running" FullWidth="true">
+                    @if (running) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" /> }
+                    Run Analysis
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+@if (result != null)
+{
+    <MudText Typo="Typo.h5" Class="mb-3">Summary</MudText>
+    @if (result.Summary != null)
+    {
+        <MudGrid Class="mb-4">
+            <MudItem xs="6" md="2">
+                <MudPaper Class="pa-3 text-center" Outlined="true">
+                    <MudText Typo="Typo.caption">Avg OOS Sharpe</MudText>
+                    <MudText Typo="Typo.h6">@result.Summary.AverageOosSharpe.ToString("F2")</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" md="2">
+                <MudPaper Class="pa-3 text-center" Outlined="true">
+                    <MudText Typo="Typo.caption">Avg OOS Return</MudText>
+                    <MudText Typo="Typo.h6" Color="@(result.Summary.AverageOosReturn >= 0 ? Color.Success : Color.Error)">
+                        @result.Summary.AverageOosReturn.ToString("F2")%
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" md="2">
+                <MudPaper Class="pa-3 text-center" Outlined="true">
+                    <MudText Typo="Typo.caption">Consistency</MudText>
+                    <MudText Typo="Typo.h6">@((result.Summary.ConsistencyScore * 100).ToString("F0"))%</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" md="2">
+                <MudPaper Class="pa-3 text-center" Outlined="true">
+                    <MudText Typo="Typo.caption">OOS Windows</MudText>
+                    <MudText Typo="Typo.h6">@result.Summary.ProfitableOosWindows / @result.Summary.TotalWindows</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+
+    <MudText Typo="Typo.h5" Class="mb-3">Windows</MudText>
+    <MudSimpleTable Dense="true" Hover="true" Striped="true">
+        <thead>
+            <tr>
+                <th>Window</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Return %</th>
+                <th>Sharpe</th>
+                <th>Max DD %</th>
+                <th>Trades</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var w in result.Windows)
+            {
+                <tr style="@(w.IsInSample ? "" : "font-weight: bold;")">
+                    <td>
+                        <MudChip T="string" Size="Size.Small" Color="@(w.IsInSample ? Color.Default : Color.Primary)">
+                            @(w.IsInSample ? "IS" : "OOS")
+                        </MudChip>
+                    </td>
+                    <td>@w.StartDate.ToString("MMM dd, yyyy")</td>
+                    <td>@w.EndDate.ToString("MMM dd, yyyy")</td>
+                    <td class="@(w.TotalReturnPercent >= 0 ? "mud-success-text" : "mud-error-text")">
+                        @w.TotalReturnPercent.ToString("F2")%
+                    </td>
+                    <td>@w.SharpeRatio.ToString("F2")</td>
+                    <td>@w.MaxDrawdownPercent.ToString("F2")%</td>
+                    <td>@w.TotalTrades</td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+}
+
+<MudButton Variant="Variant.Text" Href="/backtests" Class="mt-4">Back to Backtests</MudButton>
+
+@code {
+    [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
+    [CascadingParameter(Name = "CurrentUser")] private MacroSutraUser? CurrentUser { get; set; }
+    [Inject] private IDataProvider Data { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+
+    private List<TradingStrategy> strategies = new();
+    private WalkForwardResult? result;
+    private bool running;
+
+    private string strategyId = "";
+    private string symbol = "";
+    private DateTime? startDate = new DateTime(2022, 1, 1);
+    private DateTime? endDate = new DateTime(2024, 12, 31);
+    private decimal initialCapital = 100_000;
+    private int inSampleDays = 252;
+    private int outOfSampleDays = 63;
+    private decimal slippageBps;
+    private decimal commissionPerTrade;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(AccountId)) return;
+        try { strategies = await Data.GetStrategiesAsync(AccountId); }
+        catch { Snackbar.Add("Failed to load strategies.", Severity.Error); }
+    }
+
+    private async Task Run()
+    {
+        if (string.IsNullOrEmpty(strategyId) || string.IsNullOrEmpty(symbol) || startDate == null || endDate == null)
+        {
+            Snackbar.Add("Please fill in all fields.", Severity.Warning);
+            return;
+        }
+
+        running = true;
+        try
+        {
+            var userId = CurrentUser?.id ?? "";
+            result = await Data.RunWalkForwardAsync(
+                strategyId, AccountId, userId, symbol.Trim().ToUpper(),
+                DateOnly.FromDateTime(startDate.Value), DateOnly.FromDateTime(endDate.Value),
+                initialCapital, inSampleDays, outOfSampleDays, slippageBps, commissionPerTrade);
+            Snackbar.Add("Walk-forward analysis complete!", Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add($"Analysis failed: {ex.Message}", Severity.Error); }
+        finally { running = false; }
+    }
+}

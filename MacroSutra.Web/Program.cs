@@ -35,12 +35,33 @@ builder.Services.AddScoped<PortfolioService>();
 builder.Services.AddScoped<PositionSyncService>();
 builder.Services.AddScoped<SubscriptionService>();
 
+// Phase 7: Strategy templates
+builder.Services.AddSingleton<StrategyTemplateService>();
+
 // Phase 3: Strategy evaluation engine
 builder.Services.AddSingleton<MarketDataService>();
 builder.Services.AddScoped<ConditionEvaluator>();
 builder.Services.AddScoped<TradeExecutionService>();
 builder.Services.AddHostedService<StrategyEvaluationService>();
 builder.Services.AddHostedService<OrderStatusTracker>();
+
+// Phase 4: Backtesting engine
+builder.Services.AddScoped<BacktestEngine>();
+builder.Services.AddScoped<BacktestService>();
+builder.Services.AddScoped<WalkForwardService>();
+
+// Phase 5: Community features
+builder.Services.AddScoped<CommunityService>();
+builder.Services.AddMemoryCache();
+
+// Phase 6: Subscription dispatch and notifications
+builder.Services.AddScoped<SubscriptionDispatchService>();
+builder.Services.AddScoped<EmailNotificationService>();
+builder.Services.AddScoped<WebhookDispatchService>();
+builder.Services.AddScoped<PushNotificationService>();
+builder.Services.AddHttpClient("Webhook", c => c.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddHttpClient("SendGrid", c => c.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddHttpClient("FCM", c => c.Timeout = TimeSpan.FromSeconds(10));
 
 // Brokers
 builder.Services.AddSingleton<PaperBrokerageProvider>();

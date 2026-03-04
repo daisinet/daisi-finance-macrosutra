@@ -1,0 +1,205 @@
+@page "/backtests"
+
+<PageTitle>Backtesting — MacroSutra</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Backtesting</MudText>
+
+<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenNewBacktestDialog" Class="mb-4">
+    <MudIcon Icon="@Icons.Material.Filled.Add" Class="me-1" /> New Backtest
+</MudButton>
+<MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="CompareSelected" Class="mb-4 ms-2"
+           Disabled="@(selectedBacktestIds.Count < 2)">
+    <MudIcon Icon="@Icons.Material.Filled.Compare" Class="me-1" /> Compare Selected (@selectedBacktestIds.Count)
+</MudButton>
+
+<MudTable Items="@backtests" Hover="true" Striped="true" Dense="true" Loading="@loading" T="BacktestResult"
+          OnRowClick="@(args => Nav.NavigateTo($"/backtests/{args.Item.id}"))">
+    <HeaderContent>
+        <MudTh Style="width:40px;"></MudTh>
+        <MudTh>Strategy</MudTh>
+        <MudTh>Symbol</MudTh>
+        <MudTh>Date Range</MudTh>
+        <MudTh>Return %</MudTh>
+        <MudTh>Sharpe</MudTh>
+        <MudTh>Max DD %</MudTh>
+        <MudTh>Trades</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh>Created</MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd @onclick:stopPropagation="true">
+            <MudCheckBox T="bool" Value="@selectedBacktestIds.Contains(context.id)"
+                         ValueChanged="@(v => ToggleSelection(context.id, v))"
+                         Dense="true" Size="Size.Small" />
+        </MudTd>
+        <MudTd>@context.StrategyName</MudTd>
+        <MudTd><MudChip T="string" Size="Size.Small" Color="Color.Info">@context.Symbol</MudChip></MudTd>
+        <MudTd>@context.StartDate.ToString("MMM dd, yyyy") — @context.EndDate.ToString("MMM dd, yyyy")</MudTd>
+        <MudTd>
+            @if (context.Metrics != null)
+            {
+                <MudText Color="@(context.Metrics.TotalReturnPercent >= 0 ? Color.Success : Color.Error)">
+                    @context.Metrics.TotalReturnPercent.ToString("F2")%
+                </MudText>
+            }
+        </MudTd>
+        <MudTd>@(context.Metrics?.SharpeRatio.ToString("F2") ?? "—")</MudTd>
+        <MudTd>@(context.Metrics?.MaxDrawdownPercent.ToString("F2") ?? "—")%</MudTd>
+        <MudTd>@(context.Metrics?.TotalTrades.ToString() ?? "—")</MudTd>
+        <MudTd>
+            <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.Status)">@context.Status</MudChip>
+        </MudTd>
+        <MudTd><MudText Typo="Typo.caption">@context.CreatedUtc.ToString("MMM dd, HH:mm")</MudText></MudTd>
+        <MudTd>
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteBacktest(context))"
+                           OnClick:stopPropagation="true" Size="Size.Small" Color="Color.Error" />
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+<!-- New Backtest Dialog -->
+<MudDialog @bind-Visible="dialogVisible" Options="new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true }">
+    <TitleContent>Run New Backtest</TitleContent>
+    <DialogContent>
+        <MudSelect T="string" Label="Strategy" @bind-Value="newStrategyId" Required="true" Class="mb-3">
+            @foreach (var s in strategies)
+            {
+                <MudSelectItem Value="@s.id">@s.Name</MudSelectItem>
+            }
+        </MudSelect>
+        <MudTextField T="string" Label="Symbol" @bind-Value="newSymbol" Required="true" Placeholder="e.g. AAPL" Class="mb-3" />
+        <MudDatePicker Label="Start Date" @bind-Date="newStartDate" Class="mb-3" />
+        <MudDatePicker Label="End Date" @bind-Date="newEndDate" Class="mb-3" />
+        <MudNumericField T="decimal" Label="Initial Capital ($)" @bind-Value="newCapital" Min="100" Class="mb-3" />
+        <MudNumericField T="decimal" Label="Slippage (basis points)" @bind-Value="newSlippageBps" Min="0" Max="100" Class="mb-3" />
+        <MudNumericField T="decimal" Label="Commission per Trade ($)" @bind-Value="newCommissionPerTrade" Min="0" Class="mb-3" />
+        <MudSelect T="string" Label="Time Frame" @bind-Value="newTimeFrame" Class="mb-3">
+            <MudSelectItem T="string" Value="@("Day")">Daily</MudSelectItem>
+            <MudSelectItem T="string" Value="@("Hour")">Hourly</MudSelectItem>
+            <MudSelectItem T="string" Value="@("FifteenMinutes")">15 Minutes</MudSelectItem>
+            <MudSelectItem T="string" Value="@("FiveMinutes")">5 Minutes</MudSelectItem>
+            <MudSelectItem T="string" Value="@("OneMinute")">1 Minute</MudSelectItem>
+        </MudSelect>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => dialogVisible = false)">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="RunBacktest" Disabled="@running">
+            @if (running) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" /> }
+            Run Backtest
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
+    [CascadingParameter(Name = "CurrentUser")] private MacroSutraUser? CurrentUser { get; set; }
+    [Inject] private IDataProvider Data { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private List<BacktestResult> backtests = new();
+    private List<TradingStrategy> strategies = new();
+    private bool loading = true;
+    private bool dialogVisible;
+    private bool running;
+
+    // Dialog form fields
+    private string newStrategyId = "";
+    private string newSymbol = "";
+    private DateTime? newStartDate = new DateTime(2024, 1, 1);
+    private DateTime? newEndDate = new DateTime(2024, 12, 31);
+    private decimal newCapital = 100_000;
+    private decimal newSlippageBps;
+    private decimal newCommissionPerTrade;
+    private string newTimeFrame = "Day";
+
+    // Comparison selection
+    private HashSet<string> selectedBacktestIds = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(AccountId)) return;
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        loading = true;
+        try
+        {
+            backtests = await Data.GetBacktestsAsync(AccountId);
+            strategies = await Data.GetStrategiesAsync(AccountId);
+        }
+        catch { Snackbar.Add("Failed to load backtests.", Severity.Error); }
+        finally { loading = false; }
+    }
+
+    private void OpenNewBacktestDialog()
+    {
+        newStrategyId = "";
+        newSymbol = "";
+        newStartDate = new DateTime(2024, 1, 1);
+        newEndDate = new DateTime(2024, 12, 31);
+        newCapital = 100_000;
+        newSlippageBps = 0;
+        newCommissionPerTrade = 0;
+        newTimeFrame = "Day";
+        dialogVisible = true;
+    }
+
+    private async Task RunBacktest()
+    {
+        if (string.IsNullOrEmpty(newStrategyId) || string.IsNullOrEmpty(newSymbol) || newStartDate == null || newEndDate == null)
+        {
+            Snackbar.Add("Please fill in all fields.", Severity.Warning);
+            return;
+        }
+
+        running = true;
+        try
+        {
+            var userId = CurrentUser?.id ?? "";
+            await Data.RunBacktestAsync(newStrategyId, AccountId, userId, newSymbol.Trim().ToUpper(),
+                DateOnly.FromDateTime(newStartDate.Value), DateOnly.FromDateTime(newEndDate.Value), newCapital,
+                newSlippageBps, newCommissionPerTrade, newTimeFrame);
+            Snackbar.Add("Backtest completed!", Severity.Success);
+            dialogVisible = false;
+            await LoadData();
+        }
+        catch (Exception ex) { Snackbar.Add($"Backtest failed: {ex.Message}", Severity.Error); }
+        finally { running = false; }
+    }
+
+    private async Task DeleteBacktest(BacktestResult bt)
+    {
+        try
+        {
+            await Data.DeleteBacktestAsync(bt.id, AccountId);
+            Snackbar.Add("Backtest deleted.", Severity.Success);
+            await LoadData();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private void ToggleSelection(string id, bool selected)
+    {
+        if (selected) selectedBacktestIds.Add(id);
+        else selectedBacktestIds.Remove(id);
+    }
+
+    private void CompareSelected()
+    {
+        if (selectedBacktestIds.Count < 2) return;
+        var ids = string.Join(",", selectedBacktestIds);
+        Nav.NavigateTo($"/backtests/compare?ids={ids}");
+    }
+
+    private static Color StatusColor(BacktestStatus status) => status switch
+    {
+        BacktestStatus.Completed => Color.Success,
+        BacktestStatus.Running => Color.Info,
+        BacktestStatus.Failed => Color.Error,
+        _ => Color.Default
+    };
+}

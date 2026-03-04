@@ -1,0 +1,136 @@
+@using MacroSutra.Core.Enums
+@using MacroSutra.Core.Models
+@using MacroSutra.UI.Services
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.subtitle1" Class="mb-3">Subscribe to @Strategy.Name</MudText>
+
+        <MudSelect @bind-Value="actionType" Label="Action Type" Class="mb-3">
+            <MudSelectItem Value="@SubscriptionActionType.Mirror">Mirror — Copy trades to your brokerage</MudSelectItem>
+            <MudSelectItem Value="@SubscriptionActionType.ScaledMirror">Scaled Mirror — Copy with quantity scaling</MudSelectItem>
+            <MudSelectItem Value="@SubscriptionActionType.Email">Email Alert — Get notified by email</MudSelectItem>
+            <MudSelectItem Value="@SubscriptionActionType.Webhook">Webhook — POST to your URL</MudSelectItem>
+        </MudSelect>
+
+        @if (actionType is SubscriptionActionType.Mirror or SubscriptionActionType.ScaledMirror)
+        {
+            <MudSelect @bind-Value="brokerageAccountId" Label="Brokerage Account" Class="mb-3" Required="true">
+                @foreach (var account in brokerageAccounts)
+                {
+                    <MudSelectItem Value="@account.id">@account.Name (@account.Provider)</MudSelectItem>
+                }
+            </MudSelect>
+
+            @if (actionType == SubscriptionActionType.ScaledMirror)
+            {
+                <MudText Typo="Typo.body2" Class="mb-1">Scale Factor: @scaleFactor.ToString("P0")</MudText>
+                <MudSlider @bind-Value="scaleFactor" Min="0.1m" Max="5.0m" Step="0.1m" Class="mb-3" />
+            }
+        }
+
+        @if (actionType == SubscriptionActionType.Email)
+        {
+            <MudTextField @bind-Value="notificationEmail" Label="Email Address" InputType="InputType.Email"
+                          Required="true" Class="mb-3" />
+        }
+
+        @if (actionType == SubscriptionActionType.Webhook)
+        {
+            <MudTextField @bind-Value="webhookUrl" Label="Webhook URL" Placeholder="https://..."
+                          Required="true" Class="mb-3" />
+        }
+
+        @if (Strategy.SubscriptionCreditPrice > 0)
+        {
+            <MudAlert Severity="Severity.Info" Class="mb-3">
+                This subscription costs <strong>@Strategy.SubscriptionCreditPrice credits</strong> per @Strategy.SubscriptionPeriodDays days.
+            </MudAlert>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Success" Class="mb-3">
+                This subscription is <strong>free</strong>.
+            </MudAlert>
+        }
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-3">@errorMessage</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="@submitting">
+            @if (submitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+            }
+            Subscribe
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public TradingStrategy Strategy { get; set; } = new();
+    [Parameter] public string AccountId { get; set; } = "";
+    [Parameter] public string UserId { get; set; } = "";
+    [Parameter] public List<BrokerageAccount> BrokerageAccounts { get; set; } = new();
+
+    [Inject] private IDataProvider Data { get; set; } = default!;
+
+    private SubscriptionActionType actionType = SubscriptionActionType.Mirror;
+    private string? brokerageAccountId;
+    private decimal scaleFactor = 1.0m;
+    private string? notificationEmail;
+    private string? webhookUrl;
+    private string? errorMessage;
+    private bool submitting;
+    private List<BrokerageAccount> brokerageAccounts = new();
+
+    protected override void OnParametersSet()
+    {
+        brokerageAccounts = BrokerageAccounts;
+        if (brokerageAccounts.Count > 0)
+            brokerageAccountId = brokerageAccounts[0].id;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        errorMessage = null;
+        submitting = true;
+
+        try
+        {
+            var subscription = new Subscription
+            {
+                AccountId = AccountId,
+                SubscriberUserId = UserId,
+                PublisherAccountId = Strategy.AccountId,
+                StrategyId = Strategy.id,
+                StrategyName = Strategy.Name,
+                ActionType = actionType,
+                ScaleFactor = actionType == SubscriptionActionType.ScaledMirror ? scaleFactor : 1.0m,
+                BrokerageAccountId = actionType is SubscriptionActionType.Mirror or SubscriptionActionType.ScaledMirror
+                    ? brokerageAccountId : null,
+                NotificationEmail = actionType == SubscriptionActionType.Email ? notificationEmail : null,
+                WebhookUrl = actionType == SubscriptionActionType.Webhook ? webhookUrl : null,
+                CreditPrice = Strategy.SubscriptionCreditPrice
+            };
+
+            var created = await Data.SubscribeAsync(subscription);
+            MudDialog.Close(DialogResult.Ok(created));
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+}

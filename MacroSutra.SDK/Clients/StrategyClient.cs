@@ -43,4 +43,29 @@ public class StrategyClient(HttpClient http)
         return await response.Content.ReadFromJsonAsync<StrategyEvaluationResult>(MacroSutraClient.JsonOptions)
             ?? new StrategyEvaluationResult();
     }
+
+    public async Task<TradingStrategy?> ActivateStrategyAsync(string id)
+    {
+        var response = await http.PostAsync($"/api/strategies/{id}/activate", null);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<TradingStrategy>(MacroSutraClient.JsonOptions);
+    }
+
+    public async Task<TradingStrategy?> DeactivateStrategyAsync(string id)
+    {
+        var response = await http.PostAsync($"/api/strategies/{id}/deactivate", null);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<TradingStrategy>(MacroSutraClient.JsonOptions);
+    }
+
+    public async Task<List<StrategyTemplate>> GetTemplatesAsync()
+    {
+        return await http.GetFromJsonAsync<List<StrategyTemplate>>("/api/strategies/templates", MacroSutraClient.JsonOptions)
+            ?? new();
+    }
+
+    public async Task<StrategyTemplate?> GetTemplateAsync(string id)
+    {
+        return await http.GetFromJsonAsync<StrategyTemplate>($"/api/strategies/templates/{id}", MacroSutraClient.JsonOptions);
+    }
 }

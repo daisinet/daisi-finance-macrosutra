@@ -1,0 +1,49 @@
+@using MacroSutra.Core.Models
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(IsEdit ? "Edit Review" : "Write a Review")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Rating</MudText>
+        <MudRating @bind-SelectedValue="rating" Size="Size.Large" Class="mb-3" />
+
+        <MudTextField @bind-Value="reviewText" Label="Review (optional)" Lines="4" Variant="Variant.Outlined" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="@(rating < 1)">
+            @(IsEdit ? "Update" : "Submit")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public int InitialRating { get; set; }
+    [Parameter] public string? InitialText { get; set; }
+    [Parameter] public bool IsEdit { get; set; }
+
+    private int rating;
+    private string? reviewText;
+
+    protected override void OnInitialized()
+    {
+        rating = InitialRating > 0 ? InitialRating : 0;
+        reviewText = InitialText;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit() => MudDialog.Close(DialogResult.Ok(new ReviewDialogResult
+    {
+        Rating = rating,
+        Text = reviewText
+    }));
+
+    public class ReviewDialogResult
+    {
+        public int Rating { get; set; }
+        public string? Text { get; set; }
+    }
+}
