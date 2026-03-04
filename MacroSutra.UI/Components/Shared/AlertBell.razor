@@ -1,0 +1,67 @@
+@using MacroSutra.Core.Models
+@using Microsoft.AspNetCore.SignalR.Client
+
+<div class="position-relative d-inline-block me-2">
+    <MudIconButton Icon="@Icons.Material.Filled.Notifications" Color="Color.Inherit" OnClick="ToggleDropdown" />
+    @if (alerts.Count > 0)
+    {
+        <MudBadge Content="@alerts.Count" Color="Color.Error" Overlap="true" Class="ms-alert-badge" />
+    }
+</div>
+
+@if (showDropdown)
+{
+    <div class="ms-alert-dropdown">
+        <div class="ms-alert-dropdown-header d-flex justify-space-between align-center px-3 py-2">
+            <MudText Typo="Typo.subtitle2">Recent Alerts</MudText>
+            @if (alerts.Count > 0)
+            {
+                <MudButton Size="Size.Small" OnClick="ClearAlerts">Clear</MudButton>
+            }
+        </div>
+        @if (alerts.Count == 0)
+        {
+            <div class="px-3 py-2">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">No recent alerts.</MudText>
+            </div>
+        }
+        else
+        {
+            @foreach (var alert in alerts.Take(10))
+            {
+                <div class="ms-alert-item px-3 py-2">
+                    <MudText Typo="Typo.body2">
+                        <strong>@alert.StrategyName</strong> triggered on <strong>@alert.Symbol</strong>
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        @alert.TradeSide @alert.Quantity shares &mdash; @alert.TriggeredUtc.ToString("HH:mm:ss") UTC
+                    </MudText>
+                </div>
+            }
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public HubConnection? HubConnection { get; set; }
+
+    private List<StrategyAlertEvent> alerts = new();
+    private bool showDropdown;
+
+    protected override void OnParametersSet()
+    {
+        if (HubConnection != null)
+        {
+            HubConnection.Remove("StrategyTriggered");
+            HubConnection.On<StrategyAlertEvent>("StrategyTriggered", alert =>
+            {
+                alerts.Insert(0, alert);
+                if (alerts.Count > 50) alerts.RemoveRange(50, alerts.Count - 50);
+                InvokeAsync(StateHasChanged);
+            });
+        }
+    }
+
+    private void ToggleDropdown() => showDropdown = !showDropdown;
+    private void ClearAlerts() { alerts.Clear(); showDropdown = false; }
+}

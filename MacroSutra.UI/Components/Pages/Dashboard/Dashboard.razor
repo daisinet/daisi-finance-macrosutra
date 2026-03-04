@@ -1,4 +1,6 @@
 @page "/"
+@implements IAsyncDisposable
+@using Microsoft.AspNetCore.SignalR.Client
 
 <PageTitle>Dashboard — MacroSutra</PageTitle>
 
@@ -55,6 +57,12 @@
                 {
                     <MudText Typo="Typo.caption" Color="Color.Secondary">
                         Last evaluation: @lastEvaluation.Value.ToString("MMM dd, HH:mm:ss") UTC
+                    </MudText>
+                }
+                @if (lastUpdated.HasValue)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Dashboard updated: @lastUpdated.Value.ToString("HH:mm:ss") UTC
                     </MudText>
                 }
             </MudCardContent>
@@ -131,6 +139,8 @@
 @code {
     [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
     [Inject] private IDataProvider Data { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
 
     private List<BrokerageAccount> brokerageAccounts = new();
     private List<TradingStrategy> strategies = new();
@@ -138,6 +148,9 @@
     private List<MacroSutra.Core.Models.Position> positions = new();
     private bool engineRunning;
     private DateTime? lastEvaluation;
+    private DateTime? lastUpdated;
+    private HubConnection? hubConnection;
+    private Timer? autoRefreshTimer;
 
     private decimal totalBalance => brokerageAccounts
         .Where(a => a.IsActive && a.CachedBalance.HasValue)
@@ -148,15 +161,32 @@
     protected override async Task OnParametersSetAsync()
     {
         if (string.IsNullOrEmpty(AccountId)) return;
+        await RefreshDataAsync();
+    }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !string.IsNullOrEmpty(AccountId))
+        {
+            await StartHubAsync();
+            autoRefreshTimer = new Timer(async _ => await InvokeAsync(async () =>
+            {
+                await RefreshDataAsync();
+                StateHasChanged();
+            }), null, TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(60));
+        }
+    }
+
+    private async Task RefreshDataAsync()
+    {
         try
         {
             brokerageAccounts = await Data.GetBrokerageAccountsAsync(AccountId, activeOnly: true);
             strategies = await Data.GetStrategiesAsync(AccountId);
             recentTrades = await Data.GetTradesAsync(AccountId);
             positions = await Data.GetPositionsAsync(AccountId);
+            lastUpdated = DateTime.UtcNow;
 
-            // Infer engine status from strategy evaluation timestamps
             var latestEval = strategies
                 .Where(s => s.LastEvaluatedUtc.HasValue)
                 .Select(s => s.LastEvaluatedUtc!.Value)
@@ -169,5 +199,45 @@
             }
         }
         catch { /* Cosmos not configured yet */ }
+    }
+
+    private async Task StartHubAsync()
+    {
+        try
+        {
+            hubConnection = new HubConnectionBuilder()
+                .WithUrl(Nav.ToAbsoluteUri("/hubs/macrosutra"))
+                .WithAutomaticReconnect()
+                .Build();
+
+            hubConnection.On<MacroSutra.Core.Models.StrategyAlertEvent>("StrategyTriggered", async alert =>
+            {
+                await InvokeAsync(async () =>
+                {
+                    Snackbar.Add($"{alert.StrategyName} triggered on {alert.Symbol}", Severity.Success);
+                    await RefreshDataAsync();
+                    StateHasChanged();
+                });
+            });
+
+            hubConnection.On<MacroSutra.Core.Models.PortfolioUpdateEvent>("PortfolioUpdated", async _ =>
+            {
+                await InvokeAsync(async () =>
+                {
+                    await RefreshDataAsync();
+                    StateHasChanged();
+                });
+            });
+
+            await hubConnection.StartAsync();
+            await hubConnection.InvokeAsync("JoinAccount", AccountId);
+        }
+        catch { /* SignalR not available */ }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (autoRefreshTimer != null) await autoRefreshTimer.DisposeAsync();
+        if (hubConnection != null) await hubConnection.DisposeAsync();
     }
 }

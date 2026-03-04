@@ -1,4 +1,6 @@
 @inherits LayoutComponentBase
+@implements IAsyncDisposable
+@using Microsoft.AspNetCore.SignalR.Client
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @inject IAuthProvider Auth
@@ -90,6 +92,9 @@
                 </nav>
             </div>
             <div class="ms-header-right">
+                <!-- Alert bell -->
+                <AlertBell HubConnection="hubConnection" />
+
                 <!-- Public site link -->
                 <a href="/welcome" class="btn btn-sm btn-outline-secondary me-2">
                     <i class="fa-duotone fa-globe me-1"></i> Public Site
@@ -147,6 +152,7 @@
     private string userName = "";
     private string daisinetUserId = "";
     private MacroSutraUser? currentUser;
+    private HubConnection? hubConnection;
 
     protected override async Task OnInitializedAsync()
     {
@@ -177,7 +183,29 @@
             darkMode = theme == "dark";
 
             await ResolveCurrentUser();
+            await StartHubConnectionAsync();
             StateHasChanged();
+        }
+    }
+
+    private async Task StartHubConnectionAsync()
+    {
+        if (string.IsNullOrEmpty(accountId)) return;
+
+        try
+        {
+            hubConnection = new HubConnectionBuilder()
+                .WithUrl(Nav.ToAbsoluteUri("/hubs/macrosutra"))
+                .WithAutomaticReconnect()
+                .Build();
+
+            await hubConnection.StartAsync();
+            await hubConnection.InvokeAsync("JoinAccount", accountId);
+        }
+        catch
+        {
+            // SignalR not available — fall back to polling
+            hubConnection = null;
         }
     }
 
@@ -231,5 +259,11 @@
     {
         await Auth.LogoutAsync();
         Nav.NavigateTo("/welcome", true);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection != null)
+            await hubConnection.DisposeAsync();
     }
 }

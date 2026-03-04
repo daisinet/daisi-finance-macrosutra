@@ -202,6 +202,19 @@ public class WebDataProvider(
     public async Task DeleteBacktestAsync(string id, string accountId) =>
         await backtestService.DeleteBacktestAsync(id, accountId);
 
+    // Strategy performance
+    public async Task<List<StrategyTriggerRecord>> GetTriggerHistoryAsync(string accountId, string strategyId)
+    {
+        var performanceService = serviceProvider.GetRequiredService<StrategyPerformanceService>();
+        return await performanceService.GetTriggerHistoryAsync(accountId, strategyId);
+    }
+
+    public async Task<StrategyPerformanceSummary> GetStrategyPerformanceAsync(string accountId, string strategyId)
+    {
+        var performanceService = serviceProvider.GetRequiredService<StrategyPerformanceService>();
+        return await performanceService.GetPerformanceSummaryAsync(accountId, strategyId);
+    }
+
     // Community
     public async Task<List<TradingStrategy>> GetPublicStrategiesAsync(int page = 0, int pageSize = 20, string? sortBy = null) =>
         await communityService.GetPublicStrategiesAsync(page, pageSize, sortBy);

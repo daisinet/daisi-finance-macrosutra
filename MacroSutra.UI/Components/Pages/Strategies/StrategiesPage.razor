@@ -1,4 +1,6 @@
 @page "/strategies"
+@implements IAsyncDisposable
+@using Microsoft.AspNetCore.SignalR.Client
 
 <PageTitle>Strategies — MacroSutra</PageTitle>
 
@@ -26,6 +28,12 @@
             {
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">
                     <i class="fa-duotone fa-code-fork me-1"></i> Forked
+                </MudChip>
+            }
+            @if (recentlyTriggered.Contains(context.id))
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Success">
+                    Just Triggered
                 </MudChip>
             }
         </MudTd>
@@ -64,6 +72,7 @@
         </MudTd>
         <MudTd>
             <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" OnClick="@(() => TestNow(context))" Size="Size.Small" Title="Test Now" Color="Color.Info" />
+            <MudIconButton Icon="@Icons.Material.Filled.BarChart" Href="@($"/strategies/{context.id}/performance")" Size="Size.Small" Title="Performance" Color="Color.Secondary" />
             <MudIconButton Icon="@Icons.Material.Filled.Edit" Href="@($"/strategies/{context.id}")" Size="Size.Small" />
             <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteStrategy(context))" Size="Size.Small" Color="Color.Error" />
         </MudTd>
@@ -74,14 +83,46 @@
     [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
     [Inject] private IDataProvider Data { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
 
     private List<TradingStrategy> strategies = new();
     private bool loading = true;
+    private HashSet<string> recentlyTriggered = new();
+    private HubConnection? hubConnection;
 
     protected override async Task OnParametersSetAsync()
     {
         if (string.IsNullOrEmpty(AccountId)) return;
         await LoadStrategies();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !string.IsNullOrEmpty(AccountId))
+        {
+            try
+            {
+                hubConnection = new HubConnectionBuilder()
+                    .WithUrl(Nav.ToAbsoluteUri("/hubs/macrosutra"))
+                    .WithAutomaticReconnect()
+                    .Build();
+
+                hubConnection.On<MacroSutra.Core.Models.StrategyAlertEvent>("StrategyTriggered", async alert =>
+                {
+                    await InvokeAsync(async () =>
+                    {
+                        recentlyTriggered.Add(alert.StrategyId);
+                        Snackbar.Add($"{alert.StrategyName} triggered on {alert.Symbol}", Severity.Success);
+                        await LoadStrategies();
+                        StateHasChanged();
+                    });
+                });
+
+                await hubConnection.StartAsync();
+                await hubConnection.InvokeAsync("JoinAccount", AccountId);
+            }
+            catch { }
+        }
     }
 
     private async Task LoadStrategies()
@@ -130,5 +171,10 @@
             Snackbar.Add(msg, severity);
         }
         catch (Exception ex) { Snackbar.Add($"Evaluation failed: {ex.Message}", Severity.Error); }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection != null) await hubConnection.DisposeAsync();
     }
 }

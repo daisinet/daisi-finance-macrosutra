@@ -79,6 +79,10 @@ public interface IDataProvider
     Task<BacktestResult?> GetBacktestAsync(string id, string accountId);
     Task DeleteBacktestAsync(string id, string accountId);
 
+    // Strategy performance
+    Task<List<StrategyTriggerRecord>> GetTriggerHistoryAsync(string accountId, string strategyId);
+    Task<StrategyPerformanceSummary> GetStrategyPerformanceAsync(string accountId, string strategyId);
+
     // Community
     Task<List<TradingStrategy>> GetPublicStrategiesAsync(int page = 0, int pageSize = 20, string? sortBy = null);
     Task<TradingStrategy?> GetPublicStrategyAsync(string strategyId);

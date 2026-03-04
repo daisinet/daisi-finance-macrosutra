@@ -621,6 +621,38 @@ public class SdkDataProvider(MacroSutraClientFactory clientFactory, MauiAuthProv
         await client.Community.DeleteReviewAsync(strategyId, reviewId);
     }
 
+    // Strategy performance — via SDK API
+    public async Task<List<StrategyTriggerRecord>> GetTriggerHistoryAsync(string accountId, string strategyId)
+    {
+        using var client = await GetClientAsync();
+        var sdkRecords = await client.Strategies.GetTriggersAsync(strategyId);
+        return sdkRecords.Select(r => new StrategyTriggerRecord
+        {
+            id = r.Id, AccountId = r.AccountId, StrategyId = r.StrategyId,
+            Symbol = r.Symbol, TriggeredUtc = r.TriggeredUtc,
+            TradeIds = r.TradeIds,
+            Outcome = Enum.TryParse<TriggerOutcome>(r.Outcome, true, out var o) ? o : TriggerOutcome.Open,
+            EntryPrice = r.EntryPrice, ExitPrice = r.ExitPrice,
+            PnL = r.PnL, ReturnPercent = r.ReturnPercent
+        }).ToList();
+    }
+
+    public async Task<StrategyPerformanceSummary> GetStrategyPerformanceAsync(string accountId, string strategyId)
+    {
+        using var client = await GetClientAsync();
+        var sdk = await client.Strategies.GetPerformanceAsync(strategyId);
+        return new StrategyPerformanceSummary
+        {
+            TotalTriggers = sdk.TotalTriggers, Wins = sdk.Wins, Losses = sdk.Losses,
+            OpenTrades = sdk.OpenTrades, WinRate = sdk.WinRate, TotalPnL = sdk.TotalPnL,
+            MonthlyReturns = sdk.MonthlyReturns.Select(m => new MonthlyReturn
+            {
+                Year = m.Year, Month = m.Month,
+                ReturnPercent = m.ReturnPercent, Triggers = m.Triggers
+            }).ToList()
+        };
+    }
+
     public async Task<List<LeaderboardEntry>> GetLeaderboardAsync(string sortBy = "sharpe", int limit = 25)
     {
         using var client = await GetClientAsync();

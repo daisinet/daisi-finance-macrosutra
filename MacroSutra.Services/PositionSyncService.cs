@@ -1,5 +1,6 @@
 using MacroSutra.Brokers;
 using MacroSutra.Core.Enums;
+using MacroSutra.Core.Interfaces;
 using MacroSutra.Core.Models;
 using MacroSutra.Data;
 
@@ -10,7 +11,8 @@ namespace MacroSutra.Services;
 /// </summary>
 public class PositionSyncService(
     MacroSutraCosmo cosmo,
-    BrokerageProviderFactory providerFactory)
+    BrokerageProviderFactory providerFactory,
+    IStrategyEventPublisher? eventPublisher = null)
 {
     /// <summary>
     /// Result of syncing a single brokerage account.
@@ -87,6 +89,23 @@ public class PositionSyncService(
             account.CachedBalance = balance;
             account.LastSyncUtc = DateTime.UtcNow;
             await cosmo.UpdateBrokerageAccountAsync(account);
+
+            // Publish portfolio update (best-effort)
+            if (eventPublisher != null)
+            {
+                try
+                {
+                    await eventPublisher.PublishPortfolioUpdatedAsync(new PortfolioUpdateEvent
+                    {
+                        AccountId = account.AccountId,
+                        BrokerageAccountId = account.id,
+                        PositionCount = result.PositionCount,
+                        Balance = balance,
+                        UpdatedUtc = DateTime.UtcNow
+                    });
+                }
+                catch { /* best-effort */ }
+            }
         }
         catch (Exception ex)
         {

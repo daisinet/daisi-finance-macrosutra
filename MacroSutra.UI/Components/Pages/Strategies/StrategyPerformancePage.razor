@@ -1,0 +1,177 @@
+@page "/strategies/{StrategyId}/performance"
+
+<PageTitle>Strategy Performance — MacroSutra</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Strategy Performance</MudText>
+
+@if (loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else if (summary == null)
+{
+    <MudText Color="Color.Secondary">No performance data available.</MudText>
+}
+else
+{
+    <!-- Summary Cards -->
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" md="2">
+            <MudCard>
+                <MudCardContent>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Total Triggers</MudText>
+                    <MudText Typo="Typo.h5">@summary.TotalTriggers</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" md="2">
+            <MudCard>
+                <MudCardContent>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Wins</MudText>
+                    <MudText Typo="Typo.h5" Color="Color.Success">@summary.Wins</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" md="2">
+            <MudCard>
+                <MudCardContent>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Losses</MudText>
+                    <MudText Typo="Typo.h5" Color="Color.Error">@summary.Losses</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" md="2">
+            <MudCard>
+                <MudCardContent>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Open</MudText>
+                    <MudText Typo="Typo.h5">@summary.OpenTrades</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" md="2">
+            <MudCard>
+                <MudCardContent>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Win Rate</MudText>
+                    <MudText Typo="Typo.h5">@summary.WinRate.ToString("F1")%</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" md="2">
+            <MudCard>
+                <MudCardContent>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Total P&L</MudText>
+                    <MudText Typo="Typo.h5" Color="@(summary.TotalPnL >= 0 ? Color.Success : Color.Error)">
+                        @summary.TotalPnL.ToString("C")
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+    <!-- Monthly Returns -->
+    @if (summary.MonthlyReturns.Count > 0)
+    {
+        <MudCard Class="mb-4">
+            <MudCardHeader>
+                <MudText Typo="Typo.h6">Monthly Returns</MudText>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudSimpleTable Dense="true" Hover="true">
+                    <thead>
+                        <tr><th>Month</th><th>Return %</th><th>Triggers</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var m in summary.MonthlyReturns)
+                        {
+                            <tr>
+                                <td>@(new DateTime(m.Year, m.Month, 1).ToString("MMM yyyy"))</td>
+                                <td style="color: @(m.ReturnPercent >= 0 ? "var(--mud-palette-success)" : "var(--mud-palette-error)")">
+                                    @m.ReturnPercent.ToString("F2")%
+                                </td>
+                                <td>@m.Triggers</td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            </MudCardContent>
+        </MudCard>
+    }
+
+    <!-- Trigger History -->
+    <MudCard>
+        <MudCardHeader>
+            <MudText Typo="Typo.h6">Trigger History</MudText>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudTable Items="@triggers" Hover="true" Striped="true" Dense="true">
+                <HeaderContent>
+                    <MudTh>Date</MudTh>
+                    <MudTh>Symbol</MudTh>
+                    <MudTh>Outcome</MudTh>
+                    <MudTh>Entry</MudTh>
+                    <MudTh>Exit</MudTh>
+                    <MudTh>P&L</MudTh>
+                    <MudTh>Return %</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.TriggeredUtc.ToString("MMM dd, HH:mm")</MudTd>
+                    <MudTd>@context.Symbol</MudTd>
+                    <MudTd>
+                        <MudChip T="string" Size="Size.Small" Color="@GetOutcomeColor(context.Outcome)">
+                            @context.Outcome
+                        </MudChip>
+                    </MudTd>
+                    <MudTd>@(context.EntryPrice?.ToString("C") ?? "—")</MudTd>
+                    <MudTd>@(context.ExitPrice?.ToString("C") ?? "—")</MudTd>
+                    <MudTd>
+                        @if (context.PnL.HasValue)
+                        {
+                            <span style="color: @(context.PnL >= 0 ? "var(--mud-palette-success)" : "var(--mud-palette-error)")">
+                                @context.PnL.Value.ToString("C")
+                            </span>
+                        }
+                        else
+                        {
+                            <span>—</span>
+                        }
+                    </MudTd>
+                    <MudTd>@(context.ReturnPercent.HasValue ? $"{context.ReturnPercent:F2}%" : "—")</MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudCardContent>
+    </MudCard>
+}
+
+<MudButton Href="/strategies" Class="mt-4" Variant="Variant.Text">
+    <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Class="me-1" /> Back to Strategies
+</MudButton>
+
+@code {
+    [Parameter] public string StrategyId { get; set; } = "";
+    [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
+    [Inject] private IDataProvider Data { get; set; } = default!;
+
+    private StrategyPerformanceSummary? summary;
+    private List<StrategyTriggerRecord> triggers = new();
+    private bool loading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(AccountId) || string.IsNullOrEmpty(StrategyId)) return;
+        loading = true;
+        try
+        {
+            summary = await Data.GetStrategyPerformanceAsync(AccountId, StrategyId);
+            triggers = await Data.GetTriggerHistoryAsync(AccountId, StrategyId);
+        }
+        catch { }
+        finally { loading = false; }
+    }
+
+    private static Color GetOutcomeColor(TriggerOutcome outcome) => outcome switch
+    {
+        TriggerOutcome.Win => Color.Success,
+        TriggerOutcome.Loss => Color.Error,
+        _ => Color.Default
+    };
+}

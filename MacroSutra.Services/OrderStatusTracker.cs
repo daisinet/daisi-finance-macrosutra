@@ -46,6 +46,7 @@ public class OrderStatusTracker(
         var portfolioService = scope.ServiceProvider.GetRequiredService<PortfolioService>();
         var providerFactory = scope.ServiceProvider.GetRequiredService<BrokerageProviderFactory>();
         var tradeService = scope.ServiceProvider.GetRequiredService<TradeService>();
+        var performanceService = scope.ServiceProvider.GetService<StrategyPerformanceService>();
 
         var openTrades = await cosmo.GetOpenTradesAsync();
         if (openTrades.Count == 0) return;
@@ -75,6 +76,21 @@ public class OrderStatusTracker(
                     await tradeService.UpdateTradeStatusAsync(
                         trade.id, trade.AccountId, orderStatus.Status,
                         orderStatus.FilledPrice, orderStatus.FilledQuantity);
+
+                    // Update performance tracking when trade fills
+                    if (orderStatus.Status == TradeStatus.Filled && performanceService != null
+                        && orderStatus.FilledPrice.HasValue && orderStatus.FilledQuantity.HasValue)
+                    {
+                        try
+                        {
+                            await performanceService.UpdateTriggerOutcomeAsync(
+                                trade.id, orderStatus.FilledPrice.Value, orderStatus.FilledQuantity.Value);
+                        }
+                        catch (Exception perfEx)
+                        {
+                            logger.LogWarning(perfEx, "Failed to update performance for trade {TradeId}", trade.id);
+                        }
+                    }
                 }
             }
             catch (Exception ex)

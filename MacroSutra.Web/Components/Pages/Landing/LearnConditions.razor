@@ -1,0 +1,462 @@
+@page "/learn/conditions"
+@layout MacroSutra.Web.Components.Layout.LandingLayout
+
+<PageTitle>MacroSutra - Conditions &amp; Strategy Logic</PageTitle>
+
+<section class="landing-section">
+    <div class="landing-container">
+        <h1>Conditions &amp; Strategy Logic</h1>
+        <p>Strategies in MacroSutra are built from conditions, operators, actions, and logic groups. This reference covers every option available when constructing your strategy rules.</p>
+
+        <h2 id="condition-types" class="mt-4">Condition Types</h2>
+        <p>Each condition evaluates a specific type of market data or time-based value. The <code>ConditionType</code> enum defines all supported types:</p>
+
+        <h3 class="mt-3">Price</h3>
+        <p>Evaluates the current market price of the symbol. Use this for price-level triggers like "buy when AAPL drops below $150."</p>
+<pre><code>{
+  "conditionType": "Price",
+  "symbol": "AAPL",
+  "operator": "LessThan",
+  "value": 150.00
+}</code></pre>
+
+        <h3 class="mt-3">Volume</h3>
+        <p>Evaluates the current daily trading volume. Useful for filtering out low-liquidity periods or triggering on volume spikes.</p>
+<pre><code>{
+  "conditionType": "Volume",
+  "symbol": "TSLA",
+  "operator": "GreaterThan",
+  "value": 50000000
+}</code></pre>
+
+        <h3 class="mt-3">PercentChange</h3>
+        <p>Evaluates the daily percentage change in price. Positive values indicate gains, negative values indicate losses.</p>
+<pre><code>{
+  "conditionType": "PercentChange",
+  "symbol": "SPY",
+  "operator": "LessThan",
+  "value": -3.0
+}</code></pre>
+        <p>This example triggers when SPY drops more than 3% in a single day.</p>
+
+        <h3 class="mt-3">MovingAverage</h3>
+        <p>Evaluates a Simple Moving Average (SMA) over a configurable period. The <code>period</code> parameter sets the number of bars (default 20). Use <code>CrossesAbove</code> or <code>CrossesBelow</code> operators for moving average crossover strategies.</p>
+<pre><code>{
+  "conditionType": "MovingAverage",
+  "symbol": "MSFT",
+  "operator": "CrossesAbove",
+  "value": 0,
+  "period": 50
+}</code></pre>
+        <p>This triggers when MSFT's price crosses above its 50-day SMA. When using <code>CrossesAbove</code>/<code>CrossesBelow</code> with MovingAverage, the engine compares the current price to the SMA value.</p>
+
+        <h3 class="mt-3">RSI (Relative Strength Index)</h3>
+        <p>Evaluates the RSI indicator, which ranges from 0 to 100. Default period is 14 bars. RSI below 30 is traditionally considered oversold; above 70 is overbought.</p>
+<pre><code>{
+  "conditionType": "RSI",
+  "symbol": "NVDA",
+  "operator": "LessThan",
+  "value": 30,
+  "period": 14
+}</code></pre>
+        <p>This triggers when NVDA's RSI drops below 30 (oversold territory).</p>
+
+        <h3 class="mt-3">MACD (Moving Average Convergence Divergence)</h3>
+        <p>Evaluates the MACD line value (fast EMA minus slow EMA). Default parameters are 12/26/9 (fast/slow/signal). The value represents the MACD line, not the signal or histogram.</p>
+<pre><code>{
+  "conditionType": "MACD",
+  "symbol": "GOOGL",
+  "operator": "CrossesAbove",
+  "value": 0
+}</code></pre>
+        <p>This triggers when GOOGL's MACD line crosses above zero, a classic bullish signal.</p>
+
+        <h3 class="mt-3">Custom</h3>
+        <p>A placeholder for user-defined conditions evaluated via custom logic or external data sources. Custom conditions receive the symbol and value and return a boolean result. Currently used for advanced integrations.</p>
+<pre><code>{
+  "conditionType": "Custom",
+  "symbol": "BTC-USD",
+  "operator": "GreaterThan",
+  "value": 0,
+  "customField": "sentiment_score"
+}</code></pre>
+
+        <h3 class="mt-3">TimeOfDay</h3>
+        <p>Evaluates the current time of day (in Eastern Time, 24-hour format). Use this to restrict strategy execution to specific time windows, such as the first 30 minutes of market open.</p>
+<pre><code>{
+  "conditionType": "TimeOfDay",
+  "operator": "GreaterThanOrEqual",
+  "value": 9.50
+}</code></pre>
+        <p>The value <code>9.50</code> represents 9:30 AM Eastern (9 hours + 30 minutes expressed as 0.50). This condition passes after 9:30 AM.</p>
+
+        <h3 class="mt-3">DayOfWeek</h3>
+        <p>Evaluates the current day of the week as a numeric value (0 = Sunday, 1 = Monday, ..., 5 = Friday). Use this to execute strategies only on specific days.</p>
+<pre><code>{
+  "conditionType": "DayOfWeek",
+  "operator": "Equal",
+  "value": 1
+}</code></pre>
+        <p>This condition passes only on Mondays. Combine with other conditions to create day-specific trading rules.</p>
+
+        <h2 id="operators" class="mt-4">Condition Operators</h2>
+        <p>Each condition uses an operator to compare the evaluated value against a target. The <code>ConditionOperator</code> enum provides the following options:</p>
+
+        <table class="mt-3" style="width:100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--border-color, #ccc);">
+                    <th style="text-align:left; padding: 8px;">Operator</th>
+                    <th style="text-align:left; padding: 8px;">Enum Value</th>
+                    <th style="text-align:left; padding: 8px;">Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="border-bottom: 1px solid var(--border-color, #eee);">
+                    <td style="padding: 8px;"><code>GreaterThan</code></td>
+                    <td style="padding: 8px;">0</td>
+                    <td style="padding: 8px;">Current value is strictly greater than the target.</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border-color, #eee);">
+                    <td style="padding: 8px;"><code>GreaterThanOrEqual</code></td>
+                    <td style="padding: 8px;">1</td>
+                    <td style="padding: 8px;">Current value is greater than or equal to the target.</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border-color, #eee);">
+                    <td style="padding: 8px;"><code>LessThan</code></td>
+                    <td style="padding: 8px;">2</td>
+                    <td style="padding: 8px;">Current value is strictly less than the target.</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border-color, #eee);">
+                    <td style="padding: 8px;"><code>LessThanOrEqual</code></td>
+                    <td style="padding: 8px;">3</td>
+                    <td style="padding: 8px;">Current value is less than or equal to the target.</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border-color, #eee);">
+                    <td style="padding: 8px;"><code>Equal</code></td>
+                    <td style="padding: 8px;">4</td>
+                    <td style="padding: 8px;">Current value exactly matches the target.</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border-color, #eee);">
+                    <td style="padding: 8px;"><code>CrossesAbove</code></td>
+                    <td style="padding: 8px;">5</td>
+                    <td style="padding: 8px;">Value transitions from below to above the target. Uses in-memory tracking; resets on server restart.</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border-color, #eee);">
+                    <td style="padding: 8px;"><code>CrossesBelow</code></td>
+                    <td style="padding: 8px;">6</td>
+                    <td style="padding: 8px;">Value transitions from above to below the target. Uses in-memory tracking; resets on server restart.</td>
+                </tr>
+            </tbody>
+        </table>
+        <p class="mt-3"><strong>Note:</strong> The <code>CrossesAbove</code> and <code>CrossesBelow</code> operators require at least two evaluation cycles to detect a crossing. The first evaluation after a server restart establishes the baseline and will not trigger.</p>
+
+        <h2 id="actions" class="mt-4">Trade Action Types</h2>
+        <p>When all conditions in a strategy pass, one or more actions execute. The <code>TradeActionType</code> enum defines the available action types:</p>
+
+        <table class="mt-3" style="width:100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--border-color, #ccc);">
+                    <th style="text-align:left; padding: 8px;">Action Type</th>
+                    <th style="text-align:left; padding: 8px;">Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="border-bottom: 1px solid var(--border-color, #eee);">
+                    <td style="padding: 8px;"><code>MarketOrder</code></td>
+                    <td style="padding: 8px;">Place a market order that executes immediately at the best available price.</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border-color, #eee);">
+                    <td style="padding: 8px;"><code>LimitOrder</code></td>
+                    <td style="padding: 8px;">Place a limit order at a specified price. The order fills only at the limit price or better.</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border-color, #eee);">
+                    <td style="padding: 8px;"><code>StopOrder</code></td>
+                    <td style="padding: 8px;">Place a stop order that becomes a market order when the stop price is reached. Used for stop-loss protection.</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border-color, #eee);">
+                    <td style="padding: 8px;"><code>StopLimitOrder</code></td>
+                    <td style="padding: 8px;">Place a stop-limit order that becomes a limit order when the stop price is reached. Combines stop protection with price control.</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border-color, #eee);">
+                    <td style="padding: 8px;"><code>Alert</code></td>
+                    <td style="padding: 8px;">Send a notification (email, push, or webhook) without placing a trade. Useful for monitoring conditions without automated execution.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3 class="mt-3">Action Configuration Example</h3>
+<pre><code>{
+  "actionType": "MarketOrder",
+  "side": "Buy",
+  "symbol": "AAPL",
+  "quantityType": "Shares",
+  "quantity": 50
+}</code></pre>
+
+        <h2 id="quantity-types" class="mt-4">Quantity Types</h2>
+        <p>The <code>QuantityType</code> enum determines how the trade quantity is calculated when an action fires:</p>
+
+        <table class="mt-3" style="width:100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--border-color, #ccc);">
+                    <th style="text-align:left; padding: 8px;">Quantity Type</th>
+                    <th style="text-align:left; padding: 8px;">Description</th>
+                    <th style="text-align:left; padding: 8px;">Example</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="border-bottom: 1px solid var(--border-color, #eee);">
+                    <td style="padding: 8px;"><code>Shares</code></td>
+                    <td style="padding: 8px;">Trade the exact number of shares specified.</td>
+                    <td style="padding: 8px;"><code>quantity: 100</code> &rarr; buy/sell 100 shares.</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border-color, #eee);">
+                    <td style="padding: 8px;"><code>DollarAmount</code></td>
+                    <td style="padding: 8px;">Divide the dollar amount by the current price to calculate shares.</td>
+                    <td style="padding: 8px;"><code>quantity: 5000</code> at $150/share &rarr; 33 shares.</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border-color, #eee);">
+                    <td style="padding: 8px;"><code>PercentOfPortfolio</code></td>
+                    <td style="padding: 8px;">Calculate shares based on a percentage of your account balance.</td>
+                    <td style="padding: 8px;"><code>quantity: 10</code> with $100,000 balance &rarr; $10,000 worth of shares.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3 class="mt-3">Dollar Amount Example</h3>
+<pre><code>{
+  "actionType": "MarketOrder",
+  "side": "Buy",
+  "symbol": "MSFT",
+  "quantityType": "DollarAmount",
+  "quantity": 5000
+}</code></pre>
+
+        <h3 class="mt-3">Percent of Portfolio Example</h3>
+<pre><code>{
+  "actionType": "LimitOrder",
+  "side": "Buy",
+  "symbol": "GOOGL",
+  "quantityType": "PercentOfPortfolio",
+  "quantity": 5,
+  "limitPrice": 175.00
+}</code></pre>
+
+        <h2 id="logic-groups" class="mt-4">Logic Groups (AND / OR)</h2>
+        <p>Conditions within a strategy are combined using a <code>LogicGroupType</code> that determines how they are evaluated together:</p>
+        <ul>
+            <li><strong>And</strong> &mdash; All conditions in the group must pass for the strategy to trigger. This is the default.</li>
+            <li><strong>Or</strong> &mdash; At least one condition in the group must pass for the strategy to trigger.</li>
+        </ul>
+
+        <h3 class="mt-3">AND Group Example</h3>
+        <p>Buy when RSI is oversold AND volume is above average:</p>
+<pre><code>{
+  "logicGroupType": "And",
+  "conditions": [
+    {
+      "conditionType": "RSI",
+      "symbol": "AAPL",
+      "operator": "LessThan",
+      "value": 30,
+      "period": 14
+    },
+    {
+      "conditionType": "Volume",
+      "symbol": "AAPL",
+      "operator": "GreaterThan",
+      "value": 80000000
+    }
+  ]
+}</code></pre>
+
+        <h3 class="mt-3">OR Group Example</h3>
+        <p>Alert when either of two conditions is met:</p>
+<pre><code>{
+  "logicGroupType": "Or",
+  "conditions": [
+    {
+      "conditionType": "PercentChange",
+      "symbol": "TSLA",
+      "operator": "GreaterThan",
+      "value": 5.0
+    },
+    {
+      "conditionType": "PercentChange",
+      "symbol": "TSLA",
+      "operator": "LessThan",
+      "value": -5.0
+    }
+  ]
+}</code></pre>
+        <p>This triggers when TSLA moves more than 5% in either direction during a single day.</p>
+
+        <h3 class="mt-3">Nested Groups</h3>
+        <p>You can nest logic groups to build more complex rules. For example, require a time window AND either of two technical signals:</p>
+<pre><code>{
+  "logicGroupType": "And",
+  "conditions": [
+    {
+      "conditionType": "TimeOfDay",
+      "operator": "GreaterThanOrEqual",
+      "value": 9.50
+    },
+    {
+      "conditionType": "TimeOfDay",
+      "operator": "LessThanOrEqual",
+      "value": 10.50
+    }
+  ],
+  "nestedGroups": [
+    {
+      "logicGroupType": "Or",
+      "conditions": [
+        {
+          "conditionType": "RSI",
+          "symbol": "SPY",
+          "operator": "LessThan",
+          "value": 25,
+          "period": 14
+        },
+        {
+          "conditionType": "MACD",
+          "symbol": "SPY",
+          "operator": "CrossesAbove",
+          "value": 0
+        }
+      ]
+    }
+  ]
+}</code></pre>
+        <p>This strategy fires during the first hour of trading (9:30 AM to 10:30 AM Eastern) when either SPY's RSI drops below 25 or its MACD crosses above zero.</p>
+
+        <h2 id="time-conditions" class="mt-4">Time-Based Conditions</h2>
+        <p>Time conditions let you control <em>when</em> a strategy evaluates, independent of market data:</p>
+
+        <h3 class="mt-3">Market Hours Only</h3>
+        <p>Restrict execution to specific time windows within market hours:</p>
+<pre><code>{
+  "logicGroupType": "And",
+  "conditions": [
+    {
+      "conditionType": "TimeOfDay",
+      "operator": "GreaterThanOrEqual",
+      "value": 15.50
+    },
+    {
+      "conditionType": "TimeOfDay",
+      "operator": "LessThanOrEqual",
+      "value": 16.00
+    }
+  ]
+}</code></pre>
+        <p>This restricts execution to the last 10 minutes of trading (3:50 PM to 4:00 PM Eastern). Combine with price or indicator conditions for end-of-day strategies.</p>
+
+        <h3 class="mt-3">Day Filtering</h3>
+        <p>Some strategies should only run on specific days. Use multiple DayOfWeek conditions in an OR group:</p>
+<pre><code>{
+  "logicGroupType": "Or",
+  "conditions": [
+    {
+      "conditionType": "DayOfWeek",
+      "operator": "Equal",
+      "value": 1
+    },
+    {
+      "conditionType": "DayOfWeek",
+      "operator": "Equal",
+      "value": 3
+    },
+    {
+      "conditionType": "DayOfWeek",
+      "operator": "Equal",
+      "value": 5
+    }
+  ]
+}</code></pre>
+        <p>This passes only on Monday, Wednesday, and Friday.</p>
+
+        <h2 id="templates" class="mt-4">Strategy Templates</h2>
+        <p>MacroSutra includes built-in strategy templates to help you get started. Here are common patterns:</p>
+
+        <h3 class="mt-3">RSI Mean Reversion</h3>
+        <p>Buy when RSI indicates oversold, sell when overbought:</p>
+<pre><code>// Entry condition
+{
+  "conditionType": "RSI",
+  "symbol": "AAPL",
+  "operator": "LessThan",
+  "value": 30,
+  "period": 14
+}
+
+// Exit condition (separate strategy or linked exit)
+{
+  "conditionType": "RSI",
+  "symbol": "AAPL",
+  "operator": "GreaterThan",
+  "value": 70,
+  "period": 14
+}</code></pre>
+
+        <h3 class="mt-3">Moving Average Crossover</h3>
+        <p>Buy when price crosses above the 50-day SMA, sell when it crosses below:</p>
+<pre><code>// Entry
+{
+  "conditionType": "MovingAverage",
+  "symbol": "SPY",
+  "operator": "CrossesAbove",
+  "value": 0,
+  "period": 50
+}
+
+// Exit
+{
+  "conditionType": "MovingAverage",
+  "symbol": "SPY",
+  "operator": "CrossesBelow",
+  "value": 0,
+  "period": 50
+}</code></pre>
+
+        <h3 class="mt-3">Volume Breakout</h3>
+        <p>Buy when price rises and volume surges:</p>
+<pre><code>{
+  "logicGroupType": "And",
+  "conditions": [
+    {
+      "conditionType": "PercentChange",
+      "symbol": "NVDA",
+      "operator": "GreaterThan",
+      "value": 2.0
+    },
+    {
+      "conditionType": "Volume",
+      "symbol": "NVDA",
+      "operator": "GreaterThan",
+      "value": 100000000
+    }
+  ]
+}</code></pre>
+
+        <h3 class="mt-3">End-of-Day Rebalance</h3>
+        <p>Execute a portfolio rebalance in the last minutes of trading on Fridays:</p>
+<pre><code>{
+  "logicGroupType": "And",
+  "conditions": [
+    {
+      "conditionType": "DayOfWeek",
+      "operator": "Equal",
+      "value": 5
+    },
+    {
+      "conditionType": "TimeOfDay",
+      "operator": "GreaterThanOrEqual",
+      "value": 15.50
+    }
+  ]
+}</code></pre>
+
+        <p class="mt-4"><a href="/learn">&larr; Back to Learn</a></p>
+    </div>
+</section>

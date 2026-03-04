@@ -68,4 +68,16 @@ public class StrategyClient(HttpClient http)
     {
         return await http.GetFromJsonAsync<StrategyTemplate>($"/api/strategies/templates/{id}", MacroSutraClient.JsonOptions);
     }
+
+    public async Task<List<StrategyTriggerRecord>> GetTriggersAsync(string strategyId)
+    {
+        return await http.GetFromJsonAsync<List<StrategyTriggerRecord>>($"/api/strategies/{strategyId}/triggers", MacroSutraClient.JsonOptions)
+            ?? new();
+    }
+
+    public async Task<StrategyPerformanceSummary> GetPerformanceAsync(string strategyId)
+    {
+        return await http.GetFromJsonAsync<StrategyPerformanceSummary>($"/api/strategies/{strategyId}/performance", MacroSutraClient.JsonOptions)
+            ?? new StrategyPerformanceSummary();
+    }
 }

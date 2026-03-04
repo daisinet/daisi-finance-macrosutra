@@ -1,0 +1,163 @@
+@page "/learn/backtesting"
+@layout MacroSutra.Web.Components.Layout.LandingLayout
+
+<PageTitle>MacroSutra - Backtesting Guide</PageTitle>
+
+<section class="landing-section">
+    <div class="landing-container">
+        <h1>Backtesting &amp; Walk-Forward Analysis</h1>
+        <p>Test your strategies against historical market data before risking real capital. MacroSutra's backtesting engine simulates strategy execution over any date range and produces detailed performance metrics, equity curves, and trade logs.</p>
+
+        <h2 id="running" class="mt-4">Running a Backtest</h2>
+        <p>To run a backtest from the MacroSutra UI:</p>
+        <ol>
+            <li>Navigate to <strong>Trading &rarr; Backtesting</strong> in the sidebar.</li>
+            <li>Click <strong>New Backtest</strong>.</li>
+            <li>Select a saved strategy from the dropdown.</li>
+            <li>Enter a stock symbol (e.g., <strong>AAPL</strong>, <strong>MSFT</strong>).</li>
+            <li>Choose a <strong>Start Date</strong> and <strong>End Date</strong> for the simulation period.</li>
+            <li>Set your <strong>Initial Capital</strong> (default $100,000).</li>
+            <li>Optionally configure <strong>Slippage</strong> (in basis points) and <strong>Commission Per Trade</strong> (in dollars) to model execution costs.</li>
+            <li>Click <strong>Run Backtest</strong>. The engine simulates your strategy bar-by-bar and generates results when complete.</li>
+        </ol>
+        <p>You can also run backtests programmatically via the SDK:</p>
+<pre><code>var result = await client.Backtest.RunAsync(new RunBacktestRequest
+{
+    StrategyId = "strategy-id",
+    Symbol = "AAPL",
+    StartDate = new DateOnly(2024, 1, 1),
+    EndDate = new DateOnly(2025, 12, 31),
+    InitialCapital = 100_000m,
+    SlippageBps = 5m,
+    CommissionPerTrade = 1.00m
+});</code></pre>
+
+        <h2 id="metrics" class="mt-4">Understanding Backtest Metrics</h2>
+        <p>After a backtest completes, MacroSutra calculates the following performance metrics:</p>
+
+        <h3 class="mt-3">Total Return %</h3>
+        <p>The overall percentage gain or loss relative to your initial capital. A backtest starting with $100,000 that ends at $115,000 has a total return of 15%.</p>
+
+        <h3 class="mt-3">Sharpe Ratio</h3>
+        <p>A risk-adjusted performance measure. It divides the strategy's excess return by the standard deviation of returns. Higher values indicate better return per unit of risk taken.</p>
+        <ul>
+            <li><strong>Below 0.5</strong> &mdash; Poor risk-adjusted performance.</li>
+            <li><strong>0.5 &ndash; 1.0</strong> &mdash; Acceptable for some strategies.</li>
+            <li><strong>1.0 &ndash; 2.0</strong> &mdash; Good. Most professional fund targets fall here.</li>
+            <li><strong>Above 2.0</strong> &mdash; Excellent, but verify you are not overfitting.</li>
+        </ul>
+
+        <h3 class="mt-3">Max Drawdown %</h3>
+        <p>The largest peak-to-trough decline in portfolio value during the backtest. For example, if your equity peaked at $120,000 and then dropped to $102,000 before recovering, the max drawdown is 15%. This metric shows the worst-case loss you would have experienced from any high point.</p>
+        <p>A lower max drawdown means smoother equity growth. Strategies with drawdowns above 30&ndash;40% may be too volatile for most traders.</p>
+
+        <h3 class="mt-3">Win Rate</h3>
+        <p>The percentage of trades that closed profitably. A win rate of 60% means 6 out of every 10 trades made money. Note that win rate alone is not sufficient to evaluate a strategy &mdash; a strategy with a 40% win rate can still be profitable if its average winner is much larger than its average loser.</p>
+
+        <h3 class="mt-3">Profit Factor</h3>
+        <p>Gross profits divided by gross losses. A profit factor of 1.5 means the strategy earned $1.50 for every $1.00 it lost.</p>
+        <ul>
+            <li><strong>Below 1.0</strong> &mdash; Unprofitable strategy (losses exceed gains).</li>
+            <li><strong>1.0 &ndash; 1.5</strong> &mdash; Marginally profitable.</li>
+            <li><strong>1.5 &ndash; 2.0</strong> &mdash; Good profitability.</li>
+            <li><strong>Above 2.0</strong> &mdash; Excellent, but check for small sample size or overfitting.</li>
+        </ul>
+
+        <h3 class="mt-3">Additional Metrics</h3>
+        <ul>
+            <li><strong>Total Trades</strong> &mdash; The number of round-trip trades executed during the backtest.</li>
+            <li><strong>Winning / Losing Trades</strong> &mdash; Breakdown of profitable vs. unprofitable trades.</li>
+            <li><strong>Average Trade Return %</strong> &mdash; The mean return across all trades.</li>
+            <li><strong>Average Trade Duration</strong> &mdash; How long positions were held on average.</li>
+            <li><strong>Best / Worst Trade %</strong> &mdash; The single best and worst trade returns.</li>
+            <li><strong>Final Equity</strong> &mdash; The ending portfolio value after all simulated trades.</li>
+        </ul>
+
+        <h2 id="charts" class="mt-4">Charts and Visualizations</h2>
+        <p>Each completed backtest includes two charts:</p>
+        <ul>
+            <li><strong>Equity Curve</strong> &mdash; A line chart plotting your portfolio value over time. Steep upward slopes indicate profitable periods; flat or declining sections show drawdowns.</li>
+            <li><strong>Drawdown Chart</strong> &mdash; Shows the percentage decline from the most recent equity peak at each point in time. Deeper valleys indicate larger drawdowns. Use this to assess how long and how deep losses lasted.</li>
+        </ul>
+        <p>Both charts are built from the equity curve data points recorded once per bar during simulation.</p>
+
+        <h2 id="slippage" class="mt-4">Slippage &amp; Commission Modeling</h2>
+        <p>Real-world trading involves execution costs that can significantly affect strategy performance. MacroSutra supports two cost parameters:</p>
+        <ul>
+            <li><strong>Slippage (basis points)</strong> &mdash; Models the difference between the expected price and the actual fill price. For example, 5 bps of slippage on a $100 stock means each trade's effective price is adjusted by $0.05 against you. Set this field in the backtest configuration to simulate realistic fills.</li>
+            <li><strong>Commission Per Trade ($)</strong> &mdash; A flat dollar amount deducted from equity for each trade. For example, $1.00 per trade means a round-trip (buy + sell) costs $2.00 total.</li>
+        </ul>
+        <p>To see how costs impact your strategy, run the same backtest twice &mdash; once with zero costs and once with realistic estimates &mdash; and compare the results.</p>
+
+        <h2 id="comparison" class="mt-4">Comparison Mode</h2>
+        <p>MacroSutra lets you compare multiple backtests side by side to evaluate different strategies or parameter sets against the same market data.</p>
+        <ol>
+            <li>Run multiple backtests with different strategies, symbols, or date ranges.</li>
+            <li>On the Backtesting page, select two or more completed backtests using the checkboxes.</li>
+            <li>Click <strong>Compare</strong> to see a side-by-side view of metrics, equity curves, and trade statistics.</li>
+        </ol>
+        <p>Comparison mode is useful for A/B testing strategy variations (e.g., different RSI thresholds or moving average periods).</p>
+
+        <h2 id="walkforward" class="mt-4">Walk-Forward Analysis</h2>
+        <p>Walk-forward analysis is a technique for validating that a strategy generalizes to unseen data rather than being overfit to a specific historical period. MacroSutra automates this process.</p>
+
+        <h3 class="mt-3">How It Works</h3>
+        <p>The engine divides your date range into rolling windows, each split into an <strong>in-sample</strong> (training) period and an <strong>out-of-sample</strong> (testing) period:</p>
+        <ol>
+            <li>The strategy is evaluated on the in-sample period to measure baseline performance.</li>
+            <li>The strategy is then tested on the immediately following out-of-sample period, which it has never "seen."</li>
+            <li>The window slides forward and the process repeats until the entire date range is covered.</li>
+        </ol>
+        <p>Each window records its own metrics (return, Sharpe ratio, max drawdown, trade count).</p>
+
+        <h3 class="mt-3">Walk-Forward Summary Metrics</h3>
+        <ul>
+            <li><strong>Average OOS Sharpe</strong> &mdash; The average Sharpe ratio across all out-of-sample windows. A positive value indicates the strategy performs on unseen data.</li>
+            <li><strong>Average OOS Return</strong> &mdash; The mean return across out-of-sample windows.</li>
+            <li><strong>Consistency Score</strong> &mdash; The fraction of out-of-sample windows that were profitable (0.0 to 1.0). A score above 0.6 suggests the strategy is robust across different market regimes.</li>
+            <li><strong>Total Windows</strong> &mdash; How many rolling windows were evaluated.</li>
+            <li><strong>Profitable OOS Windows</strong> &mdash; Count of out-of-sample windows with positive returns.</li>
+        </ul>
+
+        <h3 class="mt-3">Running a Walk-Forward Analysis</h3>
+        <ol>
+            <li>Navigate to <strong>Trading &rarr; Backtesting</strong>.</li>
+            <li>Click <strong>New Backtest</strong> and configure your strategy, symbol, and date range as usual.</li>
+            <li>Enable the <strong>Walk-Forward Analysis</strong> toggle.</li>
+            <li>Set the <strong>In-Sample Period</strong> (e.g., 6 months) and <strong>Out-of-Sample Period</strong> (e.g., 2 months).</li>
+            <li>Click <strong>Run</strong>. The engine will generate multiple windows and display both individual window results and the aggregate summary.</li>
+        </ol>
+
+        <h2 id="overfitting" class="mt-4">Avoiding Overfitting</h2>
+        <p>Overfitting happens when a strategy is tuned so closely to historical data that it fails on new data. Here are practical tips to avoid it:</p>
+
+        <h3 class="mt-3">Keep Conditions Simple</h3>
+        <p>Strategies with fewer conditions are less likely to be overfit. If your strategy has 8+ conditions all tuned to specific values, it may be curve-fitting noise rather than capturing a real pattern.</p>
+
+        <h3 class="mt-3">Use Walk-Forward Analysis</h3>
+        <p>Always validate with walk-forward analysis before deploying a strategy. If the out-of-sample performance is significantly worse than in-sample, the strategy is likely overfit.</p>
+
+        <h3 class="mt-3">Test Across Multiple Symbols</h3>
+        <p>A robust strategy should work across similar instruments. If your RSI mean-reversion strategy only works on one stock, it may be capturing idiosyncratic behavior rather than a repeatable pattern.</p>
+
+        <h3 class="mt-3">Check Sample Size</h3>
+        <p>Be cautious of backtests with very few trades (under 30). Small sample sizes can produce misleadingly high Sharpe ratios or win rates that do not hold in live trading.</p>
+
+        <h3 class="mt-3">Beware of High Sharpe Ratios</h3>
+        <p>A Sharpe ratio above 3.0 in a daily backtest is unusual for most retail strategies. If you see extreme values, review whether the strategy is exploiting a data quirk or has too few trades.</p>
+
+        <h3 class="mt-3">Paper Trade Before Going Live</h3>
+        <p>After backtesting and walk-forward validation, run the strategy on a <strong>Paper Trading</strong> account for several weeks. This catches issues that historical simulation cannot model, such as slippage spikes, order rejections, and real-time data delays.</p>
+
+        <h2 id="limitations" class="mt-4">Limitations</h2>
+        <ul>
+            <li><strong>Daily bars only</strong> &mdash; The backtesting engine uses daily OHLCV bars. Intraday price movements within a single day are not simulated.</li>
+            <li><strong>Single symbol per backtest</strong> &mdash; Each backtest evaluates one symbol. For multi-symbol strategies, run separate backtests per symbol.</li>
+            <li><strong>Execution at close</strong> &mdash; Simulated trades execute at the daily close price, which may differ from real-world fill prices.</li>
+            <li><strong>No short selling in simulation</strong> &mdash; The backtest engine currently supports long-only strategies.</li>
+            <li><strong>Historical data availability</strong> &mdash; Backtest date ranges are limited by the available historical data for the chosen symbol.</li>
+        </ul>
+
+        <p class="mt-4"><a href="/learn">&larr; Back to Learn</a></p>
+    </div>
+</section>

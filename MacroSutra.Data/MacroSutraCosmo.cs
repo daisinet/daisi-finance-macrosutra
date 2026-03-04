@@ -57,6 +57,7 @@ public partial class MacroSutraCosmo(IConfiguration configuration, string connec
             SubscriptionsContainerName => SubscriptionsPartitionKeyName,
             BacktestsContainerName => BacktestsPartitionKeyName,
             CommunityContainerName => CommunityPartitionKeyName,
+            StrategyPerformanceContainerName => StrategyPerformancePartitionKeyName,
             _ => "id"
         };
 

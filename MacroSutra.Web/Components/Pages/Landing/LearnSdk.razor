@@ -77,6 +77,152 @@ var accounts = await portfolioService.GetBrokerageAccountsAsync(accountId);
 // Get positions for a specific brokerage account
 var accountPositions = await portfolioService.GetPositionsAsync(accountId, brokerageAccountId: account.Id);</code></pre>
 
-        <p class="mt-4"><a href="/learn">← Back to Learn</a></p>
+        <h2 id="community" class="mt-4">Community Client</h2>
+        <p>Browse public strategies, view the leaderboard, fork strategies, and manage reviews:</p>
+<pre><code>// Browse public strategies (no auth required)
+var publicStrategies = await client.Community.GetPublicStrategiesAsync();
+
+// Get leaderboard sorted by Sharpe ratio
+var leaderboard = await client.Community.GetLeaderboardAsync(sortBy: "sharpe", top: 10);
+
+// Fork a public strategy into your account
+var forkedStrategy = await client.Community.ForkStrategyAsync("strategy-id");
+
+// Leave a review on a public strategy
+var review = await client.Community.CreateReviewAsync("strategy-id",
+    new CreateReviewRequest { Rating = 5, Text = "Solid RSI strategy." });
+
+// Update your review
+await client.Community.UpdateReviewAsync("strategy-id", "review-id",
+    new UpdateReviewRequest { Rating = 4, Text = "Updated review." });
+
+// Delete your review
+await client.Community.DeleteReviewAsync("strategy-id", "review-id");
+
+// Get reviews for a strategy
+var reviews = await client.Community.GetReviewsAsync("strategy-id");</code></pre>
+
+        <h2 id="subscriptions" class="mt-4">Subscription Client</h2>
+        <p>Subscribe to other traders' strategies and manage your subscriptions:</p>
+<pre><code>// Subscribe to a strategy with email alerts
+var subscription = await client.Subscriptions.SubscribeAsync(
+    new CreateSubscriptionRequest
+    {
+        StrategyId = "strategy-id",
+        ActionType = "Email",
+        NotificationEmail = "me@example.com"
+    });
+
+// Subscribe with trade mirroring
+var mirrorSub = await client.Subscriptions.SubscribeAsync(
+    new CreateSubscriptionRequest
+    {
+        StrategyId = "strategy-id",
+        ActionType = "Mirror",
+        BrokerageAccountId = "account-id"
+    });
+
+// Subscribe with scaled mirroring (half the quantity)
+var scaledSub = await client.Subscriptions.SubscribeAsync(
+    new CreateSubscriptionRequest
+    {
+        StrategyId = "strategy-id",
+        ActionType = "ScaledMirror",
+        BrokerageAccountId = "account-id",
+        ScaleFactor = 0.5m
+    });
+
+// List your active subscriptions
+var mySubscriptions = await client.Subscriptions.GetSubscriptionsAsync();
+
+// Get subscribers to your strategies
+var mySubscribers = await client.Subscriptions.GetSubscribersAsync();
+
+// Cancel a subscription
+await client.Subscriptions.CancelAsync("subscription-id");</code></pre>
+
+        <h2 id="backtest" class="mt-4">Backtest Client</h2>
+        <p>Run backtests and retrieve results programmatically:</p>
+<pre><code>// Run a new backtest
+var result = await client.Backtest.RunAsync(new RunBacktestRequest
+{
+    StrategyId = "strategy-id",
+    Symbol = "AAPL",
+    StartDate = new DateOnly(2024, 1, 1),
+    EndDate = new DateOnly(2025, 12, 31),
+    InitialCapital = 100_000m,
+    SlippageBps = 5m,
+    CommissionPerTrade = 1.00m
+});
+
+// Get a specific backtest result by ID
+var backtest = await client.Backtest.GetAsync("backtest-id");
+
+// List all backtests for a strategy
+var backtests = await client.Backtest.GetByStrategyAsync("strategy-id");
+
+// List all backtests for your account
+var allBacktests = await client.Backtest.GetAllAsync();
+
+// Delete a backtest result
+await client.Backtest.DeleteAsync("backtest-id");</code></pre>
+
+        <h2 id="push" class="mt-4">Push Client</h2>
+        <p>Manage push notification settings and send notifications:</p>
+<pre><code>// Register a device for push notifications
+await client.Push.RegisterDeviceAsync(new RegisterDeviceRequest
+{
+    DeviceToken = "device-token-from-os",
+    Platform = "web"  // "web", "ios", or "android"
+});
+
+// Send a push notification (typically used by subscription triggers)
+await client.Push.SendAsync(new PushNotificationRequest
+{
+    UserId = "user-id",
+    Title = "Strategy Triggered",
+    Body = "Your RSI strategy fired a Buy signal for AAPL.",
+    Data = new Dictionary&lt;string, string&gt;
+    {
+        ["strategyId"] = "strategy-id",
+        ["symbol"] = "AAPL",
+        ["action"] = "Buy"
+    }
+});
+
+// Unregister a device
+await client.Push.UnregisterDeviceAsync("device-token");</code></pre>
+
+        <h2 id="walkforward" class="mt-4">Walk-Forward Client</h2>
+        <p>Run walk-forward analysis to validate strategy robustness across rolling time windows:</p>
+<pre><code>// Run a walk-forward analysis
+var wfResult = await client.WalkForward.RunAsync(new RunWalkForwardRequest
+{
+    StrategyId = "strategy-id",
+    Symbol = "SPY",
+    StartDate = new DateOnly(2022, 1, 1),
+    EndDate = new DateOnly(2025, 12, 31),
+    InitialCapital = 100_000m,
+    InSampleMonths = 6,
+    OutOfSampleMonths = 2
+});
+
+// Access window-level results
+foreach (var window in wfResult.Windows)
+{
+    var label = window.IsInSample ? "IS" : "OOS";
+    Console.WriteLine($"{label}: {window.StartDate} - {window.EndDate}, " +
+        $"Return: {window.TotalReturnPercent:F2}%, " +
+        $"Sharpe: {window.SharpeRatio:F2}");
+}
+
+// Access the aggregate summary
+var summary = wfResult.Summary;
+Console.WriteLine($"Avg OOS Sharpe: {summary.AverageOosSharpe:F2}");
+Console.WriteLine($"Avg OOS Return: {summary.AverageOosReturn:F2}%");
+Console.WriteLine($"Consistency: {summary.ConsistencyScore:P0}");
+Console.WriteLine($"Profitable Windows: {summary.ProfitableOosWindows}/{summary.TotalWindows}");</code></pre>
+
+        <p class="mt-4"><a href="/learn">&larr; Back to Learn</a></p>
     </div>
 </section>

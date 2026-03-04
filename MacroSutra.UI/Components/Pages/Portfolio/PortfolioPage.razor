@@ -1,4 +1,6 @@
 @page "/portfolio"
+@implements IAsyncDisposable
+@using Microsoft.AspNetCore.SignalR.Client
 
 <PageTitle>Portfolio — MacroSutra</PageTitle>
 
@@ -63,11 +65,13 @@
 @code {
     [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
     [Inject] private IDataProvider Data { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
 
     private List<BrokerageAccount> accounts = new();
     private List<MacroSutra.Core.Models.Position> positions = new();
     private string selectedAccountId = "";
     private bool loading = true;
+    private HubConnection? hubConnection;
 
     private decimal totalBalance => accounts
         .Where(a => a.IsActive && a.CachedBalance.HasValue)
@@ -81,6 +85,34 @@
     protected override async Task OnParametersSetAsync()
     {
         if (string.IsNullOrEmpty(AccountId)) return;
+        await RefreshAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !string.IsNullOrEmpty(AccountId))
+        {
+            try
+            {
+                hubConnection = new HubConnectionBuilder()
+                    .WithUrl(Nav.ToAbsoluteUri("/hubs/macrosutra"))
+                    .WithAutomaticReconnect()
+                    .Build();
+
+                hubConnection.On<MacroSutra.Core.Models.PortfolioUpdateEvent>("PortfolioUpdated", async _ =>
+                {
+                    await InvokeAsync(async () => { await RefreshAsync(); StateHasChanged(); });
+                });
+
+                await hubConnection.StartAsync();
+                await hubConnection.InvokeAsync("JoinAccount", AccountId);
+            }
+            catch { }
+        }
+    }
+
+    private async Task RefreshAsync()
+    {
         loading = true;
         try
         {
@@ -89,5 +121,10 @@
         }
         catch { }
         finally { loading = false; }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection != null) await hubConnection.DisposeAsync();
     }
 }

@@ -2,8 +2,10 @@ using System.Text.Json.Serialization;
 using MacroSutra.Brokers;
 using MacroSutra.Data;
 using MacroSutra.Services;
+using MacroSutra.Core.Interfaces;
 using MacroSutra.UI.Services;
 using MacroSutra.Web.Components;
+using MacroSutra.Web.Hubs;
 using MacroSutra.Web.Services;
 using Daisi.SDK.Models;
 using Daisi.SDK.Web.Extensions;
@@ -15,6 +17,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddMudServices();
+builder.Services.AddSignalR();
 builder.Services.AddHttpClient();
 
 // Daisi SSO authentication
@@ -63,6 +66,12 @@ builder.Services.AddHttpClient("Webhook", c => c.Timeout = TimeSpan.FromSeconds(
 builder.Services.AddHttpClient("SendGrid", c => c.Timeout = TimeSpan.FromSeconds(10));
 builder.Services.AddHttpClient("FCM", c => c.Timeout = TimeSpan.FromSeconds(10));
 
+// Phase 8: Strategy performance tracking
+builder.Services.AddScoped<StrategyPerformanceService>();
+
+// Phase 8: Real-time events
+builder.Services.AddSingleton<IStrategyEventPublisher, SignalRStrategyEventPublisher>();
+
 // Brokers
 builder.Services.AddSingleton<PaperBrokerageProvider>();
 builder.Services.AddSingleton<AlpacaBrokerageProvider>();
@@ -93,6 +102,7 @@ app.MapStaticAssets();
 
 // MacroSutra API endpoints (client-key authenticated)
 app.MapMacroSutraApiEndpoints();
+app.MapHub<MacroSutraHub>("/hubs/macrosutra");
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()

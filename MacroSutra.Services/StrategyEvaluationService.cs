@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using MacroSutra.Core.Enums;
+using MacroSutra.Core.Interfaces;
 using MacroSutra.Core.Models;
 using MacroSutra.Data;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +16,7 @@ namespace MacroSutra.Services;
 public class StrategyEvaluationService(
     IServiceScopeFactory scopeFactory,
     MarketDataService marketDataService,
+    IStrategyEventPublisher? eventPublisher,
     ILogger<StrategyEvaluationService> logger) : BackgroundService
 {
     private static readonly TimeSpan EvaluationInterval = TimeSpan.FromSeconds(60);
@@ -77,6 +79,7 @@ public class StrategyEvaluationService(
         var conditionEvaluator = scope.ServiceProvider.GetRequiredService<ConditionEvaluator>();
         var executionService = scope.ServiceProvider.GetRequiredService<TradeExecutionService>();
         var dispatchService = scope.ServiceProvider.GetRequiredService<SubscriptionDispatchService>();
+        var performanceService = scope.ServiceProvider.GetService<StrategyPerformanceService>();
 
         // 1. Get all active strategies (cross-partition)
         var strategies = await cosmo.GetAllActiveStrategiesAsync();
@@ -111,7 +114,7 @@ public class StrategyEvaluationService(
 
             try
             {
-                await EvaluateStrategyAsync(strategy, snapshots, priceHistories, conditionEvaluator, executionService, dispatchService, cosmo);
+                await EvaluateStrategyAsync(strategy, snapshots, priceHistories, conditionEvaluator, executionService, dispatchService, cosmo, performanceService);
             }
             catch (Exception ex)
             {
@@ -127,7 +130,8 @@ public class StrategyEvaluationService(
         ConditionEvaluator conditionEvaluator,
         TradeExecutionService executionService,
         SubscriptionDispatchService dispatchService,
-        MacroSutraCosmo cosmo)
+        MacroSutraCosmo cosmo,
+        StrategyPerformanceService? performanceService = null)
     {
         bool anyTriggered = false;
 
@@ -192,6 +196,42 @@ public class StrategyEvaluationService(
                     strategy.Name, strategy.id, symbol);
                 var trades = await executionService.ExecuteActionsAsync(strategy, symbol, snapshot);
                 anyTriggered = true;
+
+                // Publish real-time alert (best-effort)
+                if (eventPublisher != null && trades.Count > 0)
+                {
+                    try
+                    {
+                        await eventPublisher.PublishStrategyTriggeredAsync(new StrategyAlertEvent
+                        {
+                            StrategyId = strategy.id,
+                            StrategyName = strategy.Name,
+                            Symbol = symbol,
+                            TriggeredUtc = DateTime.UtcNow,
+                            TradeIds = trades.Select(t => t.id).ToList(),
+                            TradeSide = trades.First().Side,
+                            Quantity = trades.Sum(t => t.Quantity),
+                            AccountId = strategy.AccountId
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning(ex, "Failed to publish strategy alert for {StrategyId}", strategy.id);
+                    }
+                }
+
+                // Record performance trigger (best-effort)
+                if (performanceService != null && trades.Count > 0)
+                {
+                    try
+                    {
+                        await performanceService.RecordTriggerAsync(strategy.AccountId, strategy.id, symbol, trades);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning(ex, "Failed to record performance trigger for {StrategyId}", strategy.id);
+                    }
+                }
 
                 // Fan out to subscribers (best-effort — never blocks publisher trades)
                 try

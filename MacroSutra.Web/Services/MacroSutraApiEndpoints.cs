@@ -177,6 +177,22 @@ public static class MacroSutraApiEndpoints
             return Results.NoContent();
         });
 
+        // ── Strategy Performance ──
+
+        api.MapGet("/strategies/{id}/performance", async (string id, StrategyPerformanceService perfSvc, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            var summary = await perfSvc.GetPerformanceSummaryAsync(accountId!, id);
+            return Results.Ok(summary);
+        });
+
+        api.MapGet("/strategies/{id}/triggers", async (string id, StrategyPerformanceService perfSvc, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            var triggers = await perfSvc.GetTriggerHistoryAsync(accountId!, id);
+            return Results.Ok(triggers);
+        });
+
         // ── Subscriptions ──
 
         api.MapGet("/subscriptions", async (SubscriptionService svc, HttpContext ctx) =>
