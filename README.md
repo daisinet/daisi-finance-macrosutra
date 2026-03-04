@@ -139,7 +139,7 @@ dotnet test MacroSutra.Tests
 - [x] REST API — 27 Minimal API endpoints with API key authentication
 - [x] User authentication via Daisinet SSO (`AddDaisiForWeb()`)
 - [x] User management — roles (Viewer, Trader, Manager, Owner), team import from Daisinet
-- [x] Test suite — 171 tests across 19 test classes
+- [x] Test suite — 202 tests across 23 test classes
 
 ### Phase 2: Brokerage Integration ✅
 
@@ -202,36 +202,49 @@ dotnet test MacroSutra.Tests
 - [x] Subscription pricing — publisher sets SubscriptionCreditPrice and SubscriptionPeriodDays
 - [x] SDK subscription client and API endpoints
 
-### Phase 7: Finish What We Started
+### Phase 7: Finish What We Started ✅
 
-Complete the gaps left in Phases 2–6.
+Completed the gaps left in Phases 2–6.
 
 **Strategy engine gaps (Phase 3):**
-- [ ] Strategy templates — pre-built stop-loss, trailing stop, mean reversion, momentum, breakout strategies
-- [ ] Time-based conditions — time-of-day, day-of-week, market open/close relative triggers
-- [ ] Compound trigger logic — nested condition groups (currently flat AND/OR per strategy)
+- [x] Strategy templates — 5 pre-built templates: RSI Oversold Bounce, MA Crossover, Price Breakout, Mean Reversion, MACD Momentum
+- [x] Time-based conditions — TimeOfDay and DayOfWeek condition types
+- [x] Compound trigger logic — nested ConditionGroup tree with recursive AND/OR evaluation
 
 **Backtesting gaps (Phase 4):**
-- [ ] Backtest comparison mode — run multiple strategies side-by-side against the same data
-- [ ] Walk-forward analysis — out-of-sample testing with rolling windows
-- [ ] Slippage and commission modeling — configurable cost assumptions
-- [ ] Intraday bars — sub-daily time resolution for backtests
+- [x] Backtest comparison mode — run multiple strategies side-by-side against the same data
+- [x] Walk-forward analysis — rolling in-sample/out-of-sample windows with consistency scoring
+- [x] Slippage and commission modeling — configurable SlippageBps and CommissionPerTrade
+- [x] Intraday bars — Day, Hour, 15min, 5min, 1min time frames via BarTimeFrame enum
 
 **MAUI app gaps:**
-- [ ] SDK strategy activate/deactivate endpoints
-- [ ] SDK brokerage account CRUD endpoints (create, update, deactivate, validate+link)
-- [ ] SdkDataProvider implementations for all 7 stubbed methods
+- [x] SDK strategy activate/deactivate endpoints
+- [x] SDK brokerage account CRUD endpoints (create, update, deactivate, validate+link)
+- [x] SdkDataProvider implementations for all stubbed methods
 
 **Subscription gaps (Phase 6):**
-- [ ] Push notifications — APNs (iOS) and FCM (Android) for MAUI trade alerts
+- [x] Push notifications — FCM for Android/iOS MAUI trade alerts, token registration, LastUsedUtc tracking
 
-**Documentation gaps:**
-- [ ] Fix landing page — remove AI marketing claims until Phase 9 ships
-- [ ] LearnSdk.razor — expand to cover all 7 SDK clients (currently only shows basic strategy + trade)
-- [ ] Add Learn page for backtesting
-- [ ] Add Learn page for strategy conditions and actions reference
+### Phase 8: Production-Ready + Real-Time ✅
 
-### Phase 8: Additional Brokerages
+- [x] SignalR infrastructure — MacroSutraHub with account-scoped groups, IStrategyEventPublisher interface in Core
+- [x] Real-time strategy alerts — StrategyTriggered events pushed to connected Blazor clients on trigger
+- [x] Real-time portfolio updates — PortfolioUpdated events pushed after position sync
+- [x] AlertBell component — header notification bell with badge count and dropdown of recent alerts
+- [x] Live dashboard — SignalR subscriptions on Dashboard, Portfolio, and Strategies pages with auto-refresh fallback
+- [x] "Just Triggered" indicator on strategies list when SignalR event arrives
+- [x] Strategy performance tracking — StrategyTriggerRecord Cosmos container, win/loss/open outcome tracking
+- [x] Performance summary — TotalTriggers, WinRate, TotalPnL, MonthlyReturns computed from trigger records
+- [x] StrategyPerformancePage — summary cards, monthly returns table, trigger history with P&L
+- [x] OrderStatusTracker integration — updates trigger outcomes when trades fill
+- [x] API endpoints — GET /api/strategies/{id}/performance, GET /api/strategies/{id}/triggers
+- [x] SDK client methods — GetPerformanceAsync, GetTriggersAsync
+- [x] Test coverage — WalkForwardService (10), PushNotificationService (8), StrategyTemplateService (5), StrategyPerformanceService (8)
+- [x] Landing page fix — removed false AI claims, now "Rule-Based Trading Automation"
+- [x] Learn pages — Backtesting guide (/learn/backtesting), Conditions reference (/learn/conditions)
+- [x] SDK reference expanded — 8 client sections (was 3): added Community, Subscription, Backtest, Push, WalkForward
+
+### Phase 9: Additional Brokerages
 
 - [ ] Charles Schwab provider
 - [ ] Interactive Brokers provider (TWS API)
@@ -243,7 +256,7 @@ Complete the gaps left in Phases 2–6.
 - [ ] Robinhood provider (crypto only, pending stock API availability)
 - [ ] Provider health monitoring and automatic failover
 
-### Phase 9: Bot Tools & AI Features
+### Phase 10: Bot Tools & AI Features
 
 - [ ] Daisinet bot tools (`MacroSutra.Tools`) — query portfolio, check triggers, get performance, execute trades via bot
 - [ ] AI strategy suggestions — analyze portfolio and market conditions to recommend triggers
@@ -252,14 +265,14 @@ Complete the gaps left in Phases 2–6.
 - [ ] Market sentiment analysis — news and social sentiment as trigger inputs
 - [ ] Update landing page with accurate AI feature descriptions
 
-### Phase 10: Advanced Strategy Builder
+### Phase 11: Advanced Strategy Builder
 
 - [ ] Visual drag-and-drop strategy builder UI with live preview
 - [ ] Strategy templates gallery — browse, preview, and fork starter strategies
 - [ ] Condition builder wizard — step-by-step guided condition creation
 - [ ] Live strategy preview — show simulated triggers against recent market data
 
-### Phase 11: Advanced Trading Features
+### Phase 12: Advanced Trading Features
 
 - [ ] Multi-leg options support (spreads, straddles, iron condors)
 - [ ] Fractional share support where brokerage allows
