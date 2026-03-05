@@ -8,11 +8,13 @@ namespace MacroSutra.Services;
 /// <summary>
 /// Executes trade actions when a strategy triggers.
 /// Resolves quantities, places orders via brokerage providers, and records trades.
+/// Checks provider health before placing orders and attempts failover if unhealthy.
 /// </summary>
 public class TradeExecutionService(
     BrokerageProviderFactory providerFactory,
     PortfolioService portfolioService,
     TradeService tradeService,
+    ProviderHealthMonitorService healthMonitor,
     ILogger<TradeExecutionService> logger)
 {
     /// <summary>
@@ -81,6 +83,27 @@ public class TradeExecutionService(
             return null;
         }
 
+        // Check provider health before proceeding
+        if (!healthMonitor.IsHealthy(brokerageAccount.Provider))
+        {
+            logger.LogWarning("Provider {Provider} is unhealthy for strategy {StrategyId} on {Symbol} — attempting failover",
+                brokerageAccount.Provider, strategy.id, symbol);
+
+            // Try to find an alternate healthy brokerage account for this user
+            var alternateAccount = await FindHealthyAlternateAccountAsync(strategy.AccountId, brokerageAccount.Provider);
+            if (alternateAccount != null)
+            {
+                logger.LogInformation("Failing over from {Unhealthy} to {Healthy} for strategy {StrategyId}",
+                    brokerageAccount.Provider, alternateAccount.Provider, strategy.id);
+                brokerageAccount = alternateAccount;
+            }
+            else
+            {
+                logger.LogWarning("No healthy alternate account available — proceeding with unhealthy provider {Provider}",
+                    brokerageAccount.Provider);
+            }
+        }
+
         // Resolve quantity
         var provider = providerFactory.GetProvider(brokerageAccount.Provider);
         var balance = brokerageAccount.CachedBalance ?? await provider.GetAccountBalanceAsync(brokerageAccount.CredentialData);
@@ -127,6 +150,26 @@ public class TradeExecutionService(
         }
 
         return trade;
+    }
+
+    /// <summary>
+    /// Finds an alternate healthy brokerage account for failover, excluding the unhealthy provider.
+    /// </summary>
+    private async Task<BrokerageAccount?> FindHealthyAlternateAccountAsync(string accountId, BrokerageProvider unhealthyProvider)
+    {
+        try
+        {
+            var allAccounts = await portfolioService.GetBrokerageAccountsAsync(accountId);
+            return allAccounts.FirstOrDefault(a =>
+                a.IsActive &&
+                a.Provider != unhealthyProvider &&
+                a.Provider != BrokerageProvider.Paper &&
+                healthMonitor.IsHealthy(a.Provider));
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     /// <summary>

@@ -11,8 +11,22 @@ public class BrokerageProviderFactoryTests
         var services = new ServiceCollection();
         services.AddSingleton<PaperBrokerageProvider>();
         services.AddSingleton<AlpacaBrokerageProvider>();
+        services.AddSingleton<InteractiveBrokersBrokerageProvider>();
+        services.AddSingleton<MoomooBrokerageProvider>();
         services.AddHttpClient("Webull");
+        services.AddHttpClient("Schwab");
+        services.AddHttpClient("Tradier");
+        services.AddHttpClient("Tastytrade");
+        services.AddHttpClient("TradeStation");
+        services.AddHttpClient("PublicCom");
+        services.AddHttpClient("Robinhood");
         services.AddSingleton<WebullBrokerageProvider>();
+        services.AddSingleton<SchwabBrokerageProvider>();
+        services.AddSingleton<TradierBrokerageProvider>();
+        services.AddSingleton<TastytradeBrokerageProvider>();
+        services.AddSingleton<TradeStationBrokerageProvider>();
+        services.AddSingleton<PublicComBrokerageProvider>();
+        services.AddSingleton<RobinhoodBrokerageProvider>();
         var sp = services.BuildServiceProvider();
         return new BrokerageProviderFactory(sp);
     }
@@ -42,10 +56,67 @@ public class BrokerageProviderFactoryTests
     }
 
     [Fact]
-    public void GetProvider_InteractiveBrokers_ThrowsNotSupported()
+    public void GetProvider_Schwab_ReturnsSchwabProvider()
     {
         var factory = CreateFactory();
-        Assert.Throws<NotSupportedException>(() => factory.GetProvider(BrokerageProvider.InteractiveBrokers));
+        var provider = factory.GetProvider(BrokerageProvider.Schwab);
+        Assert.IsType<SchwabBrokerageProvider>(provider);
+    }
+
+    [Fact]
+    public void GetProvider_Tradier_ReturnsTradierProvider()
+    {
+        var factory = CreateFactory();
+        var provider = factory.GetProvider(BrokerageProvider.Tradier);
+        Assert.IsType<TradierBrokerageProvider>(provider);
+    }
+
+    [Fact]
+    public void GetProvider_Tastytrade_ReturnsTastytradeProvider()
+    {
+        var factory = CreateFactory();
+        var provider = factory.GetProvider(BrokerageProvider.Tastytrade);
+        Assert.IsType<TastytradeBrokerageProvider>(provider);
+    }
+
+    [Fact]
+    public void GetProvider_TradeStation_ReturnsTradeStationProvider()
+    {
+        var factory = CreateFactory();
+        var provider = factory.GetProvider(BrokerageProvider.TradeStation);
+        Assert.IsType<TradeStationBrokerageProvider>(provider);
+    }
+
+    [Fact]
+    public void GetProvider_PublicCom_ReturnsPublicComProvider()
+    {
+        var factory = CreateFactory();
+        var provider = factory.GetProvider(BrokerageProvider.PublicCom);
+        Assert.IsType<PublicComBrokerageProvider>(provider);
+    }
+
+    [Fact]
+    public void GetProvider_InteractiveBrokers_ReturnsIBKRProvider()
+    {
+        var factory = CreateFactory();
+        var provider = factory.GetProvider(BrokerageProvider.InteractiveBrokers);
+        Assert.IsType<InteractiveBrokersBrokerageProvider>(provider);
+    }
+
+    [Fact]
+    public void GetProvider_Moomoo_ReturnsMoomooProvider()
+    {
+        var factory = CreateFactory();
+        var provider = factory.GetProvider(BrokerageProvider.Moomoo);
+        Assert.IsType<MoomooBrokerageProvider>(provider);
+    }
+
+    [Fact]
+    public void GetProvider_Robinhood_ReturnsRobinhoodProvider()
+    {
+        var factory = CreateFactory();
+        var provider = factory.GetProvider(BrokerageProvider.Robinhood);
+        Assert.IsType<RobinhoodBrokerageProvider>(provider);
     }
 
     [Fact]

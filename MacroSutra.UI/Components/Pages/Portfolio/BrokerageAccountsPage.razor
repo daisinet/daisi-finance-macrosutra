@@ -24,6 +24,7 @@
         <MudTh>Mode</MudTh>
         <MudTh>Balance</MudTh>
         <MudTh>Last Sync</MudTh>
+        <MudTh>Health</MudTh>
         <MudTh>Status</MudTh>
         <MudTh>Actions</MudTh>
     </HeaderContent>
@@ -37,6 +38,15 @@
         </MudTd>
         <MudTd>@(context.CachedBalance?.ToString("C") ?? "—")</MudTd>
         <MudTd>@(context.LastSyncUtc?.ToString("MMM dd, HH:mm") ?? "Never")</MudTd>
+        <MudTd>
+            @if (context.Provider != BrokerageProvider.Paper)
+            {
+                var healthy = providerHealthy.GetValueOrDefault(context.Provider, true);
+                <MudIcon Icon="@Icons.Material.Filled.Circle" Size="Size.Small"
+                         Color="@(healthy ? Color.Success : Color.Error)"
+                         Title="@(healthy ? "Healthy" : "Unhealthy")" />
+            }
+        </MudTd>
         <MudTd>
             <MudIcon Icon="@(context.IsActive ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
                      Color="@(context.IsActive ? Color.Success : Color.Error)" />
@@ -61,9 +71,9 @@
     <DialogContent>
         <MudTextField @bind-Value="newAccount.Name" Label="Account Name" Required="true" Class="mb-3" />
         <MudSelect T="BrokerageProvider" Value="newAccount.Provider" ValueChanged="@OnProviderChanged" Label="Provider" Class="mb-3">
-            @foreach (var p in new[] { BrokerageProvider.Paper, BrokerageProvider.Alpaca, BrokerageProvider.Webull })
+            @foreach (var p in allProviders)
             {
-                <MudSelectItem Value="@p">@p</MudSelectItem>
+                <MudSelectItem Value="@p">@FormatProviderName(p)</MudSelectItem>
             }
         </MudSelect>
 
@@ -89,6 +99,98 @@
             <MudSwitch @bind-Value="isPaperTrading" Label="Sandbox Mode" Color="Color.Primary" Class="mb-3" />
             <MudText Typo="Typo.caption" Color="Color.Secondary">
                 Get your credentials from <MudLink Href="https://www.webull.com/open-api" Target="_blank">developer.webull.com</MudLink>
+            </MudText>
+        }
+        else if (newAccount.Provider == BrokerageProvider.Schwab)
+        {
+            <MudTextField @bind-Value="schwabAppKey" Label="App Key" Required="true" Class="mb-3" />
+            <MudTextField @bind-Value="schwabAppSecret" Label="App Secret" Required="true" Class="mb-3"
+                          InputType="InputType.Password" />
+            <MudTextField @bind-Value="schwabAccessToken" Label="Access Token" Required="true" Class="mb-3"
+                          InputType="InputType.Password" />
+            <MudTextField @bind-Value="schwabRefreshToken" Label="Refresh Token" Required="true" Class="mb-3"
+                          InputType="InputType.Password" />
+            <MudSwitch @bind-Value="isPaperTrading" Label="Paper Trading" Color="Color.Primary" Class="mb-3" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Get your credentials from <MudLink Href="https://developer.schwab.com/" Target="_blank">developer.schwab.com</MudLink>
+            </MudText>
+        }
+        else if (newAccount.Provider == BrokerageProvider.Tradier)
+        {
+            <MudTextField @bind-Value="tradierAccessToken" Label="Access Token" Required="true" Class="mb-3"
+                          InputType="InputType.Password" />
+            <MudTextField @bind-Value="tradierAccountNumber" Label="Account Number" Required="true" Class="mb-3" />
+            <MudSwitch @bind-Value="isPaperTrading" Label="Sandbox Mode" Color="Color.Primary" Class="mb-3" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Get your credentials from <MudLink Href="https://developer.tradier.com/" Target="_blank">developer.tradier.com</MudLink>
+            </MudText>
+        }
+        else if (newAccount.Provider == BrokerageProvider.Tastytrade)
+        {
+            <MudTextField @bind-Value="tastytradeUsername" Label="Username" Required="true" Class="mb-3" />
+            <MudTextField @bind-Value="tastytradePassword" Label="Password" Required="true" Class="mb-3"
+                          InputType="InputType.Password" />
+            <MudSwitch @bind-Value="isPaperTrading" Label="Sandbox (Cert) Mode" Color="Color.Primary" Class="mb-3" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Use your Tastytrade login credentials. <MudLink Href="https://developer.tastytrade.com/" Target="_blank">developer.tastytrade.com</MudLink>
+            </MudText>
+        }
+        else if (newAccount.Provider == BrokerageProvider.TradeStation)
+        {
+            <MudTextField @bind-Value="tradeStationClientId" Label="Client ID" Required="true" Class="mb-3" />
+            <MudTextField @bind-Value="tradeStationClientSecret" Label="Client Secret" Required="true" Class="mb-3"
+                          InputType="InputType.Password" />
+            <MudTextField @bind-Value="tradeStationAccessToken" Label="Access Token" Required="true" Class="mb-3"
+                          InputType="InputType.Password" />
+            <MudTextField @bind-Value="tradeStationRefreshToken" Label="Refresh Token" Required="true" Class="mb-3"
+                          InputType="InputType.Password" />
+            <MudSwitch @bind-Value="isPaperTrading" Label="SIM Mode" Color="Color.Primary" Class="mb-3" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Get your credentials from <MudLink Href="https://api.tradestation.com/docs/" Target="_blank">api.tradestation.com</MudLink>
+            </MudText>
+        }
+        else if (newAccount.Provider == BrokerageProvider.PublicCom)
+        {
+            <MudTextField @bind-Value="publicComApiKey" Label="API Key" Required="true" Class="mb-3" />
+            <MudTextField @bind-Value="publicComSecretKey" Label="Secret Key" Required="true" Class="mb-3"
+                          InputType="InputType.Password" />
+            <MudSwitch @bind-Value="isPaperTrading" Label="Sandbox Mode" Color="Color.Primary" Class="mb-3" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Get your credentials from <MudLink Href="https://public.com/api" Target="_blank">public.com</MudLink>
+            </MudText>
+        }
+        else if (newAccount.Provider == BrokerageProvider.InteractiveBrokers)
+        {
+            <MudTextField @bind-Value="ibkrHost" Label="TWS Host" Required="true" Class="mb-3" />
+            <MudNumericField @bind-Value="ibkrPort" Label="TWS Port" Required="true" Class="mb-3" />
+            <MudNumericField @bind-Value="ibkrClientId" Label="Client ID" Required="true" Class="mb-3" />
+            <MudSwitch @bind-Value="isPaperTrading" Label="Paper Trading (Port 7497)" Color="Color.Primary" Class="mb-3" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Requires TWS or IB Gateway running locally. <MudLink Href="https://www.interactivebrokers.com/en/trading/ib-api.php" Target="_blank">IBKR API</MudLink>
+            </MudText>
+        }
+        else if (newAccount.Provider == BrokerageProvider.Moomoo)
+        {
+            <MudTextField @bind-Value="moomooHost" Label="OpenD Host" Required="true" Class="mb-3" />
+            <MudNumericField @bind-Value="moomooPort" Label="OpenD Port" Required="true" Class="mb-3" />
+            <MudTextField @bind-Value="moomooTradingPassword" Label="Trading Password" Required="true" Class="mb-3"
+                          InputType="InputType.Password" />
+            <MudTextField @bind-Value="moomooSecurityFirm" Label="Security Firm" Class="mb-3" />
+            <MudSwitch @bind-Value="isPaperTrading" Label="Paper Trading" Color="Color.Primary" Class="mb-3" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Requires OpenD gateway. <MudLink Href="https://openapi.moomoo.com/" Target="_blank">moomoo OpenAPI</MudLink>
+            </MudText>
+        }
+        else if (newAccount.Provider == BrokerageProvider.Robinhood)
+        {
+            <MudTextField @bind-Value="robinhoodApiKey" Label="API Key" Required="true" Class="mb-3" />
+            <MudTextField @bind-Value="robinhoodApiSecret" Label="API Secret" Required="true" Class="mb-3"
+                          InputType="InputType.Password" />
+            <MudTextField @bind-Value="robinhoodBase64PrivateKey" Label="Base64 Private Key (Ed25519)" Required="true" Class="mb-3"
+                          InputType="InputType.Password" Lines="3" />
+            <MudAlert Severity="Severity.Info" Class="mb-3">Robinhood currently supports crypto trading only.</MudAlert>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Get your API credentials from <MudLink Href="https://robinhood.com/account/crypto-api" Target="_blank">Robinhood Crypto API</MudLink>
             </MudText>
         }
 
@@ -127,6 +229,16 @@
     private bool syncingAll;
     private HashSet<string> syncingAccounts = new();
     private string? validationError;
+    private Dictionary<BrokerageProvider, bool> providerHealthy = new();
+
+    // All providers in display order
+    private static readonly BrokerageProvider[] allProviders =
+    [
+        BrokerageProvider.Paper, BrokerageProvider.Alpaca, BrokerageProvider.Schwab,
+        BrokerageProvider.InteractiveBrokers, BrokerageProvider.Tradier, BrokerageProvider.Webull,
+        BrokerageProvider.TradeStation, BrokerageProvider.Tastytrade, BrokerageProvider.PublicCom,
+        BrokerageProvider.Moomoo, BrokerageProvider.Robinhood
+    ];
 
     // Alpaca fields
     private string alpacaApiKey = "";
@@ -137,6 +249,46 @@
     private string webullAppSecret = "";
     private string webullAccessToken = "";
     private string webullRefreshToken = "";
+
+    // Schwab fields
+    private string schwabAppKey = "";
+    private string schwabAppSecret = "";
+    private string schwabAccessToken = "";
+    private string schwabRefreshToken = "";
+
+    // Tradier fields
+    private string tradierAccessToken = "";
+    private string tradierAccountNumber = "";
+
+    // Tastytrade fields
+    private string tastytradeUsername = "";
+    private string tastytradePassword = "";
+
+    // TradeStation fields
+    private string tradeStationClientId = "";
+    private string tradeStationClientSecret = "";
+    private string tradeStationAccessToken = "";
+    private string tradeStationRefreshToken = "";
+
+    // Public.com fields
+    private string publicComApiKey = "";
+    private string publicComSecretKey = "";
+
+    // IBKR fields
+    private string ibkrHost = "127.0.0.1";
+    private int ibkrPort = 7497;
+    private int ibkrClientId = 1;
+
+    // moomoo fields
+    private string moomooHost = "127.0.0.1";
+    private int moomooPort = 11111;
+    private string moomooTradingPassword = "";
+    private string moomooSecurityFirm = "FutuSecurities";
+
+    // Robinhood fields
+    private string robinhoodApiKey = "";
+    private string robinhoodApiSecret = "";
+    private string robinhoodBase64PrivateKey = "";
 
     // Shared
     private bool isPaperTrading;
@@ -158,12 +310,16 @@
     private void OpenAddDialog()
     {
         newAccount = new();
-        alpacaApiKey = "";
-        alpacaSecretKey = "";
-        webullAppKey = "";
-        webullAppSecret = "";
-        webullAccessToken = "";
-        webullRefreshToken = "";
+        alpacaApiKey = ""; alpacaSecretKey = "";
+        webullAppKey = ""; webullAppSecret = ""; webullAccessToken = ""; webullRefreshToken = "";
+        schwabAppKey = ""; schwabAppSecret = ""; schwabAccessToken = ""; schwabRefreshToken = "";
+        tradierAccessToken = ""; tradierAccountNumber = "";
+        tastytradeUsername = ""; tastytradePassword = "";
+        tradeStationClientId = ""; tradeStationClientSecret = ""; tradeStationAccessToken = ""; tradeStationRefreshToken = "";
+        publicComApiKey = ""; publicComSecretKey = "";
+        ibkrHost = "127.0.0.1"; ibkrPort = 7497; ibkrClientId = 1;
+        moomooHost = "127.0.0.1"; moomooPort = 11111; moomooTradingPassword = ""; moomooSecurityFirm = "FutuSecurities";
+        robinhoodApiKey = ""; robinhoodApiSecret = ""; robinhoodBase64PrivateKey = "";
         isPaperTrading = false;
         validationError = null;
         showAdd = true;
@@ -174,6 +330,18 @@
         newAccount.Provider = provider;
         validationError = null;
         StateHasChanged();
+    }
+
+    private static string FormatProviderName(BrokerageProvider provider)
+    {
+        return provider switch
+        {
+            BrokerageProvider.InteractiveBrokers => "Interactive Brokers",
+            BrokerageProvider.PublicCom => "Public.com",
+            BrokerageProvider.Moomoo => "moomoo",
+            BrokerageProvider.Robinhood => "Robinhood (Crypto Only)",
+            _ => provider.ToString()
+        };
     }
 
     private async Task AddAccount()
@@ -189,26 +357,54 @@
             newAccount.IsPaperTrading = isPaperTrading;
 
             // Build credential JSON based on provider
-            if (newAccount.Provider == BrokerageProvider.Alpaca)
+            newAccount.CredentialData = newAccount.Provider switch
             {
-                newAccount.CredentialData = System.Text.Json.JsonSerializer.Serialize(new
+                BrokerageProvider.Alpaca => System.Text.Json.JsonSerializer.Serialize(new
                 {
-                    ApiKey = alpacaApiKey,
-                    SecretKey = alpacaSecretKey,
-                    IsPaperTrading = isPaperTrading
-                });
-            }
-            else if (newAccount.Provider == BrokerageProvider.Webull)
-            {
-                newAccount.CredentialData = System.Text.Json.JsonSerializer.Serialize(new
+                    ApiKey = alpacaApiKey, SecretKey = alpacaSecretKey, IsPaperTrading = isPaperTrading
+                }),
+                BrokerageProvider.Webull => System.Text.Json.JsonSerializer.Serialize(new
                 {
-                    AppKey = webullAppKey,
-                    AppSecret = webullAppSecret,
-                    AccessToken = webullAccessToken,
-                    RefreshToken = webullRefreshToken,
-                    IsPaperTrading = isPaperTrading
-                });
-            }
+                    AppKey = webullAppKey, AppSecret = webullAppSecret, AccessToken = webullAccessToken,
+                    RefreshToken = webullRefreshToken, IsPaperTrading = isPaperTrading
+                }),
+                BrokerageProvider.Schwab => System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    AppKey = schwabAppKey, AppSecret = schwabAppSecret, AccessToken = schwabAccessToken,
+                    RefreshToken = schwabRefreshToken, IsPaperTrading = isPaperTrading
+                }),
+                BrokerageProvider.Tradier => System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    AccessToken = tradierAccessToken, AccountNumber = tradierAccountNumber, IsPaperTrading = isPaperTrading
+                }),
+                BrokerageProvider.Tastytrade => System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    Username = tastytradeUsername, Password = tastytradePassword, IsPaperTrading = isPaperTrading
+                }),
+                BrokerageProvider.TradeStation => System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    ClientId = tradeStationClientId, ClientSecret = tradeStationClientSecret,
+                    AccessToken = tradeStationAccessToken, RefreshToken = tradeStationRefreshToken, IsPaperTrading = isPaperTrading
+                }),
+                BrokerageProvider.PublicCom => System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    ApiKey = publicComApiKey, SecretKey = publicComSecretKey, IsPaperTrading = isPaperTrading
+                }),
+                BrokerageProvider.InteractiveBrokers => System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    Host = ibkrHost, Port = isPaperTrading ? 7497 : ibkrPort, ClientId = ibkrClientId, IsPaperTrading = isPaperTrading
+                }),
+                BrokerageProvider.Moomoo => System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    Host = moomooHost, Port = moomooPort, TradingPassword = moomooTradingPassword,
+                    SecurityFirm = moomooSecurityFirm, IsPaperTrading = isPaperTrading
+                }),
+                BrokerageProvider.Robinhood => System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    ApiKey = robinhoodApiKey, ApiSecret = robinhoodApiSecret, Base64PrivateKey = robinhoodBase64PrivateKey
+                }),
+                _ => ""
+            };
 
             if (newAccount.Provider == BrokerageProvider.Paper)
             {

@@ -244,17 +244,18 @@ Completed the gaps left in Phases 2–6.
 - [x] Learn pages — Backtesting guide (/learn/backtesting), Conditions reference (/learn/conditions)
 - [x] SDK reference expanded — 8 client sections (was 3): added Community, Subscription, Backtest, Push, WalkForward
 
-### Phase 9: Additional Brokerages
+### Phase 9: Additional Brokerages ✅
 
-- [ ] Charles Schwab provider
-- [ ] Interactive Brokers provider (TWS API)
-- [ ] Tradier provider
-- [ ] TradeStation provider
-- [ ] Tastytrade provider
-- [ ] Public.com provider
-- [ ] moomoo / Futu OpenAPI provider
-- [ ] Robinhood provider (crypto only, pending stock API availability)
-- [ ] Provider health monitoring and automatic failover
+- [x] Charles Schwab provider — REST at `api.schwabapi.com/trader/v1`, OAuth 2.0 refresh tokens
+- [x] Interactive Brokers provider — TWS API wrapper with async/await bridge, paper (7497) / live (7496) ports
+- [x] Tradier provider — REST at `api.tradier.com/v1` (live) / `sandbox.tradier.com/v1` (sandbox), bearer token auth
+- [x] TradeStation provider — REST at `api.tradestation.com/v3`, OAuth 2.0, SIM account for paper
+- [x] Tastytrade provider — REST at `api.tastytrade.com` (live) / `api.cert.tastytrade.com` (sandbox), session token auth
+- [x] Public.com provider — REST at `api.public.com/v1`, API key auth, fractional shares support
+- [x] moomoo provider — OpenAPI SDK wrapper, requires OpenD gateway on localhost
+- [x] Robinhood provider — Crypto-only REST at `trading.robinhood.com/api/v1/crypto/trading/`, Ed25519 signature auth
+- [x] Provider health monitoring — `ProviderHealthMonitorService` BackgroundService checking every 5 min, consecutive failure tracking, health badges in UI
+- [x] Automatic failover — `TradeExecutionService` checks provider health before placing orders, attempts failover to alternate healthy account
 
 ### Phase 10: Bot Tools & AI Features
 

@@ -27,7 +27,10 @@ public class TradeExecutionServiceTests
         cosmo.Setup(c => c.GetTradeAsync(It.IsAny<string>(), It.IsAny<string>()))
              .ReturnsAsync((string id, string aid) => new Trade { id = id, AccountId = aid, Status = TradeStatus.Pending });
 
-        var service = new TradeExecutionService(factory.Object, portfolioService, tradeService, logger);
+        var healthMonitor = new ProviderHealthMonitorService(
+            factory.Object,
+            Mock.Of<ILogger<ProviderHealthMonitorService>>());
+        var service = new TradeExecutionService(factory.Object, portfolioService, tradeService, healthMonitor, logger);
         return (service, cosmo, factory);
     }
 

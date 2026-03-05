@@ -76,8 +76,26 @@ builder.Services.AddSingleton<IStrategyEventPublisher, SignalRStrategyEventPubli
 builder.Services.AddSingleton<PaperBrokerageProvider>();
 builder.Services.AddSingleton<AlpacaBrokerageProvider>();
 builder.Services.AddSingleton<WebullBrokerageProvider>();
+builder.Services.AddSingleton<SchwabBrokerageProvider>();
+builder.Services.AddSingleton<TradierBrokerageProvider>();
+builder.Services.AddSingleton<TastytradeBrokerageProvider>();
+builder.Services.AddSingleton<TradeStationBrokerageProvider>();
+builder.Services.AddSingleton<PublicComBrokerageProvider>();
+builder.Services.AddSingleton<InteractiveBrokersBrokerageProvider>();
+builder.Services.AddSingleton<MoomooBrokerageProvider>();
+builder.Services.AddSingleton<RobinhoodBrokerageProvider>();
 builder.Services.AddScoped<BrokerageProviderFactory>();
 builder.Services.AddHttpClient("Webull", c => c.Timeout = TimeSpan.FromSeconds(30));
+builder.Services.AddHttpClient("Schwab", c => c.Timeout = TimeSpan.FromSeconds(30));
+builder.Services.AddHttpClient("Tradier", c => c.Timeout = TimeSpan.FromSeconds(30));
+builder.Services.AddHttpClient("Tastytrade", c => c.Timeout = TimeSpan.FromSeconds(30));
+builder.Services.AddHttpClient("TradeStation", c => c.Timeout = TimeSpan.FromSeconds(30));
+builder.Services.AddHttpClient("PublicCom", c => c.Timeout = TimeSpan.FromSeconds(30));
+builder.Services.AddHttpClient("Robinhood", c => c.Timeout = TimeSpan.FromSeconds(30));
+
+// Provider health monitoring
+builder.Services.AddSingleton<ProviderHealthMonitorService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<ProviderHealthMonitorService>());
 
 // UI abstractions — Web implementations
 builder.Services.AddScoped<IAuthProvider, WebAuthProvider>();

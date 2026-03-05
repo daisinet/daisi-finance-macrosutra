@@ -1,0 +1,77 @@
+@page "/learn/brokerages"
+@layout MacroSutra.Web.Components.Layout.LandingLayout
+
+<PageTitle>MacroSutra - Brokerage Integration Guide</PageTitle>
+
+<section class="landing-section">
+    <div class="landing-container">
+        <h1>Brokerage Integration Guide</h1>
+        <p>MacroSutra connects to 10 brokerage providers through a unified <code>IBrokerageProvider</code> interface. Each provider handles order placement, position sync, account balance queries, and credential management.</p>
+
+        <h2>Supported Brokerages</h2>
+
+        <h3>REST API Providers</h3>
+        <p>These brokerages use standard REST APIs with OAuth or API key authentication. Setup is straightforward — enter your credentials and MacroSutra handles the rest.</p>
+
+        <table class="landing-table">
+            <thead>
+                <tr><th>Provider</th><th>Auth Method</th><th>Paper Mode</th><th>Token Refresh</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>Alpaca</strong></td><td>API Key + Secret</td><td>Yes</td><td>No (keys don't expire)</td></tr>
+                <tr><td><strong>Charles Schwab</strong></td><td>OAuth 2.0</td><td>Yes</td><td>Automatic</td></tr>
+                <tr><td><strong>Tradier</strong></td><td>Bearer Token</td><td>Yes (Sandbox)</td><td>No</td></tr>
+                <tr><td><strong>Webull</strong></td><td>OAuth 2.0 + App Key</td><td>Yes (Sandbox)</td><td>Automatic</td></tr>
+                <tr><td><strong>TradeStation</strong></td><td>OAuth 2.0</td><td>Yes (SIM)</td><td>Automatic</td></tr>
+                <tr><td><strong>Tastytrade</strong></td><td>Username/Password Session</td><td>Yes (Cert)</td><td>Automatic</td></tr>
+                <tr><td><strong>Public.com</strong></td><td>API Key + Secret</td><td>Yes (Sandbox)</td><td>No</td></tr>
+                <tr><td><strong>Robinhood</strong></td><td>Ed25519 Signature</td><td>No</td><td>No</td></tr>
+            </tbody>
+        </table>
+
+        <h3>SDK/Gateway Providers</h3>
+        <p>These brokerages require local software running on your machine (TWS or OpenD gateway).</p>
+
+        <table class="landing-table">
+            <thead>
+                <tr><th>Provider</th><th>Requires</th><th>Paper Mode</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>Interactive Brokers</strong></td><td>TWS or IB Gateway</td><td>Yes (Port 7497)</td><td>Most comprehensive multi-asset coverage</td></tr>
+                <tr><td><strong>moomoo</strong></td><td>OpenD Gateway</td><td>Yes</td><td>Requires trading password unlock</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Linking an Account</h2>
+        <ol>
+            <li>Navigate to <strong>Portfolio &gt; Brokerage Accounts</strong>.</li>
+            <li>Click <strong>Link Account</strong> and choose your broker from the dropdown.</li>
+            <li>Enter the required credentials for your chosen provider.</li>
+            <li>Toggle <strong>Paper Trading</strong> if you want to use sandbox/simulated mode.</li>
+            <li>Click <strong>Save</strong> — MacroSutra will validate your credentials before linking.</li>
+        </ol>
+
+        <h2>Paper Trading</h2>
+        <p>Every provider supports paper trading through one of these mechanisms:</p>
+        <ul>
+            <li><strong>Built-in Paper Provider</strong> — MacroSutra's own simulated trading engine with no external dependencies.</li>
+            <li><strong>Sandbox/SIM environments</strong> — Schwab, Tradier, Webull, TradeStation, Tastytrade, and Public.com all offer sandbox APIs.</li>
+            <li><strong>Gateway port selection</strong> — Interactive Brokers uses port 7497 for paper, 7496 for live.</li>
+        </ul>
+
+        <h2 id="health">Provider Health Monitoring</h2>
+        <p>MacroSutra continuously monitors the health of each brokerage provider:</p>
+        <ul>
+            <li>A background service checks all providers every <strong>5 minutes</strong>.</li>
+            <li>Each provider shows a <strong>green/red health indicator</strong> on the Brokerage Accounts page.</li>
+            <li>After <strong>3 consecutive failures</strong>, a provider is marked unhealthy.</li>
+            <li>When placing an order through an unhealthy provider, MacroSutra automatically attempts <strong>failover</strong> to an alternate healthy brokerage account.</li>
+        </ul>
+
+        <h2 id="robinhood">Robinhood (Crypto Only)</h2>
+        <p>Robinhood currently only offers a public API for cryptocurrency trading. Stock and options orders submitted through the Robinhood provider will be rejected. Supported crypto symbols include BTC, ETH, DOGE, SOL, and others listed on Robinhood Crypto.</p>
+
+        <h2>Credential Security</h2>
+        <p>All credentials are stored encrypted in Cosmos DB. OAuth tokens that support refresh (Schwab, Webull, TradeStation, Tastytrade) are automatically refreshed before expiry. API keys and secrets are never logged or transmitted outside of direct brokerage API calls.</p>
+    </div>
+</section>
