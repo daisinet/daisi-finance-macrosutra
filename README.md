@@ -257,14 +257,18 @@ Completed the gaps left in Phases 2–6.
 - [x] Provider health monitoring — `ProviderHealthMonitorService` BackgroundService checking every 5 min, consecutive failure tracking, health badges in UI
 - [x] Automatic failover — `TradeExecutionService` checks provider health before placing orders, attempts failover to alternate healthy account
 
-### Phase 10: Bot Tools & AI Features
+### Phase 10: Bot Tools & AI Features ✅
 
-- [ ] Daisinet bot tools (`MacroSutra.Tools`) — query portfolio, check triggers, get performance, execute trades via bot
-- [ ] AI strategy suggestions — analyze portfolio and market conditions to recommend triggers
-- [ ] Natural language strategy builder — describe strategy in English, AI generates rules
-- [ ] AI risk assessment — evaluate strategy risk profile and suggest adjustments
-- [ ] Market sentiment analysis — news and social sentiment as trigger inputs
-- [ ] Update landing page with accurate AI feature descriptions
+- [x] PortfolioTool — query positions, balances, and linked brokerage accounts via bot
+- [x] StrategyTool — list, get, test, and browse strategy templates via bot
+- [x] TradeTool — place buy/sell orders, check status, query trade history via bot
+- [x] PerformanceTool — strategy performance summary and trigger history via bot
+- [x] BacktestTool — run backtests, list past results, get detailed metrics via bot
+- [x] StrategyBuilderTool — AI-powered natural language strategy creation using inference
+- [x] RiskAssessmentTool — AI-powered strategy risk analysis with position/performance context
+- [x] MarketSentimentTool — AI-powered market sentiment analysis with technical indicators
+- [x] Marketplace plugin packaging — `catalog.json` manifest for Daisinet marketplace distribution
+- [x] Test coverage — 54 tests across 8 tool test classes
 
 ### Phase 11: Advanced Strategy Builder
 

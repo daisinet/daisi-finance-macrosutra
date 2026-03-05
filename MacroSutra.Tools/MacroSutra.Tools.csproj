@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="MacroSutra.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\MacroSutra.Services\MacroSutra.Services.csproj" />
     <ProjectReference Include="..\..\daisi-sdk-dotnet\Daisi.SDK\Daisi.SDK.csproj" />
   </ItemGroup>

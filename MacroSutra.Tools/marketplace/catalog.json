@@ -1,0 +1,213 @@
+{
+  "id": "macrosutra-tools",
+  "name": "MacroSutra Trading Tools",
+  "description": "AI-powered trading tools for MacroSutra — portfolio management, strategy building, backtesting, risk assessment, and market sentiment analysis.",
+  "version": "1.0.0",
+  "author": "MacroSutra",
+  "tags": ["trading", "finance", "portfolio", "strategy", "backtest", "risk", "sentiment", "ai"],
+  "providers": {},
+  "tools": [
+    {
+      "toolId": "macrosutra-portfolio",
+      "name": "MacroSutra Portfolio",
+      "description": "Query trading portfolio data — positions, balances, and linked brokerage accounts.",
+      "tags": ["portfolio", "positions", "holdings", "balance", "brokerage", "accounts"],
+      "toolGroup": "TradingTools",
+      "parameters": [
+        {
+          "name": "action",
+          "description": "The action: \"positions\", \"balance\", or \"accounts\".",
+          "isRequired": true
+        },
+        {
+          "name": "accountId",
+          "description": "The MacroSutra account ID.",
+          "isRequired": true
+        },
+        {
+          "name": "brokerageAccountId",
+          "description": "Optional brokerage account ID to filter positions.",
+          "isRequired": false
+        }
+      ]
+    },
+    {
+      "toolId": "macrosutra-strategy",
+      "name": "MacroSutra Strategy",
+      "description": "Query and manage trading strategies — list, get details, test against live data, and browse templates.",
+      "tags": ["strategy", "strategies", "triggers", "conditions", "trading rules", "templates"],
+      "toolGroup": "TradingTools",
+      "parameters": [
+        {
+          "name": "action",
+          "description": "The action: \"list\", \"get\", \"test\", or \"templates\".",
+          "isRequired": true
+        },
+        {
+          "name": "accountId",
+          "description": "The MacroSutra account ID.",
+          "isRequired": true
+        },
+        {
+          "name": "strategyId",
+          "description": "The strategy ID (required for \"get\" and \"test\").",
+          "isRequired": false
+        }
+      ]
+    },
+    {
+      "toolId": "macrosutra-trade",
+      "name": "MacroSutra Trade",
+      "description": "Place trades (buy/sell) and query trade history and order status.",
+      "tags": ["trade", "buy", "sell", "order", "execute", "place order"],
+      "toolGroup": "TradingTools",
+      "parameters": [
+        {
+          "name": "action",
+          "description": "The action: \"buy\", \"sell\", \"status\", or \"history\".",
+          "isRequired": true
+        },
+        {
+          "name": "accountId",
+          "description": "The MacroSutra account ID.",
+          "isRequired": true
+        },
+        {
+          "name": "symbol",
+          "description": "The stock/crypto symbol (required for buy/sell).",
+          "isRequired": false
+        },
+        {
+          "name": "quantity",
+          "description": "Number of shares to trade (required for buy/sell).",
+          "isRequired": false
+        },
+        {
+          "name": "orderId",
+          "description": "The trade ID (required for \"status\").",
+          "isRequired": false
+        }
+      ]
+    },
+    {
+      "toolId": "macrosutra-performance",
+      "name": "MacroSutra Performance",
+      "description": "Get strategy performance metrics (win rate, P&L, Sharpe) and trigger history with outcomes.",
+      "tags": ["performance", "win rate", "P&L", "returns", "triggers", "outcomes"],
+      "toolGroup": "TradingTools",
+      "parameters": [
+        {
+          "name": "action",
+          "description": "The action: \"summary\" or \"triggers\".",
+          "isRequired": true
+        },
+        {
+          "name": "accountId",
+          "description": "The MacroSutra account ID.",
+          "isRequired": true
+        },
+        {
+          "name": "strategyId",
+          "description": "The strategy ID.",
+          "isRequired": true
+        }
+      ]
+    },
+    {
+      "toolId": "macrosutra-backtest",
+      "name": "MacroSutra Backtest",
+      "description": "Run backtests against historical data, list past backtests, and view detailed results.",
+      "tags": ["backtest", "historical", "simulate", "test strategy", "Sharpe", "drawdown"],
+      "toolGroup": "TradingTools",
+      "parameters": [
+        {
+          "name": "action",
+          "description": "The action: \"run\", \"list\", or \"get\".",
+          "isRequired": true
+        },
+        {
+          "name": "accountId",
+          "description": "The MacroSutra account ID.",
+          "isRequired": true
+        },
+        {
+          "name": "strategyId",
+          "description": "The strategy ID (required for \"run\").",
+          "isRequired": false
+        },
+        {
+          "name": "symbol",
+          "description": "The symbol to backtest (required for \"run\"). Example: \"AAPL\".",
+          "isRequired": false
+        },
+        {
+          "name": "fromDate",
+          "description": "Start date in yyyy-MM-dd format (required for \"run\").",
+          "isRequired": false
+        },
+        {
+          "name": "toDate",
+          "description": "End date in yyyy-MM-dd format (required for \"run\").",
+          "isRequired": false
+        }
+      ]
+    },
+    {
+      "toolId": "macrosutra-strategy-builder",
+      "name": "MacroSutra Strategy Builder",
+      "description": "AI-powered tool that converts natural language descriptions into structured trading strategies with conditions and actions.",
+      "tags": ["create strategy", "build strategy", "natural language", "ai", "auto-create"],
+      "toolGroup": "AITools",
+      "parameters": [
+        {
+          "name": "accountId",
+          "description": "The MacroSutra account ID.",
+          "isRequired": true
+        },
+        {
+          "name": "description",
+          "description": "Natural language description of the trading strategy.",
+          "isRequired": true
+        },
+        {
+          "name": "symbols",
+          "description": "Comma-separated symbols (e.g. \"AAPL,MSFT\").",
+          "isRequired": true
+        }
+      ]
+    },
+    {
+      "toolId": "macrosutra-risk-assessment",
+      "name": "MacroSutra Risk Assessment",
+      "description": "AI-powered strategy risk analysis — evaluates conditions, actions, performance history, and portfolio exposure to provide risk rating and recommendations.",
+      "tags": ["risk", "risk assessment", "analyze risk", "strategy risk", "exposure"],
+      "toolGroup": "AITools",
+      "parameters": [
+        {
+          "name": "accountId",
+          "description": "The MacroSutra account ID.",
+          "isRequired": true
+        },
+        {
+          "name": "strategyId",
+          "description": "The strategy ID to assess.",
+          "isRequired": true
+        }
+      ]
+    },
+    {
+      "toolId": "macrosutra-market-sentiment",
+      "name": "MacroSutra Market Sentiment",
+      "description": "AI-powered market sentiment analysis — combines price action, volume, technical indicators, and trends to provide sentiment rating and trading signals.",
+      "tags": ["sentiment", "market analysis", "bullish", "bearish", "outlook", "trend"],
+      "toolGroup": "AITools",
+      "parameters": [
+        {
+          "name": "symbol",
+          "description": "The stock/crypto symbol to analyze (e.g. \"AAPL\").",
+          "isRequired": true
+        }
+      ]
+    }
+  ]
+}

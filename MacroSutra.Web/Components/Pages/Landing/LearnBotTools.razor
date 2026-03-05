@@ -1,0 +1,100 @@
+@page "/learn/bot-tools"
+@layout MacroSutra.Web.Components.Layout.LandingLayout
+
+<PageTitle>MacroSutra - Bot Tools & AI Features</PageTitle>
+
+<section class="landing-section">
+    <div class="landing-container">
+        <h1>Bot Tools &amp; AI Features</h1>
+        <p>MacroSutra integrates with Daisinet bots through a marketplace plugin containing 8 specialized tools. Install the <strong>MacroSutra Trading Tools</strong> plugin from the Daisinet marketplace to enable conversational access to your trading platform.</p>
+
+        <h2 class="mt-4">Trading Tools</h2>
+        <p>These tools provide direct access to MacroSutra features through bot conversations.</p>
+
+        <h3>Portfolio Tool</h3>
+        <p>Query your trading portfolio. Actions:</p>
+        <ul>
+            <li><strong>positions</strong> &mdash; View current positions with symbol, quantity, average cost, current price, market value, and unrealized P&amp;L.</li>
+            <li><strong>balance</strong> &mdash; View account balances across all linked brokerages.</li>
+            <li><strong>accounts</strong> &mdash; List all linked brokerage accounts with provider, status, and last sync time.</li>
+        </ul>
+
+        <h3>Strategy Tool</h3>
+        <p>Manage trading strategies. Actions:</p>
+        <ul>
+            <li><strong>list</strong> &mdash; List all strategies with name, symbols, condition/action counts, and last triggered time.</li>
+            <li><strong>get</strong> &mdash; Get full strategy details including conditions, actions, and configuration.</li>
+            <li><strong>test</strong> &mdash; Evaluate a strategy against current live market data.</li>
+            <li><strong>templates</strong> &mdash; Browse available strategy templates (RSI Oversold, MA Crossover, etc.).</li>
+        </ul>
+
+        <h3>Trade Tool</h3>
+        <p>Place trades and check history. The bot always confirms with the user before executing a trade. Actions:</p>
+        <ul>
+            <li><strong>buy</strong> / <strong>sell</strong> &mdash; Place a market order through your active brokerage account. Requires symbol and quantity.</li>
+            <li><strong>status</strong> &mdash; Check the status of a specific order by ID.</li>
+            <li><strong>history</strong> &mdash; View recent trade history, optionally filtered by symbol.</li>
+        </ul>
+
+        <h3>Performance Tool</h3>
+        <p>Check strategy performance. Actions:</p>
+        <ul>
+            <li><strong>summary</strong> &mdash; Performance metrics including total triggers, win rate, P&amp;L, and monthly returns.</li>
+            <li><strong>triggers</strong> &mdash; Recent trigger history with entry/exit prices, P&amp;L, and outcomes (win/loss/open).</li>
+        </ul>
+
+        <h3>Backtest Tool</h3>
+        <p>Run and review backtests. Actions:</p>
+        <ul>
+            <li><strong>run</strong> &mdash; Start a new backtest for a strategy on a symbol over a date range. Returns total return, Sharpe ratio, max drawdown, win rate, and trade count.</li>
+            <li><strong>list</strong> &mdash; List past backtests with key metrics.</li>
+            <li><strong>get</strong> &mdash; Get detailed results of a specific backtest including full trade log.</li>
+        </ul>
+
+        <h2 class="mt-4">AI-Powered Tools</h2>
+        <p>These tools use AI inference to provide intelligent analysis and automation.</p>
+
+        <h3>Strategy Builder</h3>
+        <p>Describe a trading strategy in natural language and the AI converts it into structured conditions and actions. Example:</p>
+        <blockquote>"Buy AAPL when RSI drops below 30 and price is under $150, sell when RSI goes above 70"</blockquote>
+        <p>The tool generates the correct condition types, operators, values, and trade actions, then creates the strategy in your account (inactive by default so you can review before activating).</p>
+
+        <h3>Risk Assessment</h3>
+        <p>Get an AI analysis of any strategy's risk profile. The tool examines:</p>
+        <ul>
+            <li>Strategy conditions and actions for potential issues</li>
+            <li>Historical performance data (win rate, P&amp;L) if available</li>
+            <li>Current portfolio exposure in the strategy's symbols</li>
+        </ul>
+        <p>Returns a risk rating (Low/Medium/High/Very High), key risks, strengths, and specific recommendations to reduce risk.</p>
+
+        <h3>Market Sentiment</h3>
+        <p>Analyze market sentiment for any stock or crypto symbol. The tool gathers:</p>
+        <ul>
+            <li>Current price, volume, and daily change</li>
+            <li>50-day price history with moving averages</li>
+            <li>Approximate RSI and price vs. moving average analysis</li>
+        </ul>
+        <p>Returns a sentiment rating (Strong Bearish to Strong Bullish), key observations, technical outlook, and actionable trading signals.</p>
+
+        <h2 class="mt-4">Installation</h2>
+        <p>The MacroSutra Trading Tools plugin is available in the Daisinet marketplace. Once installed, the tools are automatically available to any bot in your Daisinet workspace. The bot selects the appropriate tool based on your request using keyword matching in the tool descriptions.</p>
+
+        <h2 class="mt-4">Tool IDs</h2>
+        <table class="landing-table">
+            <thead>
+                <tr><th>Tool</th><th>ID</th><th>Group</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Portfolio</td><td><code>macrosutra-portfolio</code></td><td>TradingTools</td></tr>
+                <tr><td>Strategy</td><td><code>macrosutra-strategy</code></td><td>TradingTools</td></tr>
+                <tr><td>Trade</td><td><code>macrosutra-trade</code></td><td>TradingTools</td></tr>
+                <tr><td>Performance</td><td><code>macrosutra-performance</code></td><td>TradingTools</td></tr>
+                <tr><td>Backtest</td><td><code>macrosutra-backtest</code></td><td>TradingTools</td></tr>
+                <tr><td>Strategy Builder</td><td><code>macrosutra-strategy-builder</code></td><td>AITools</td></tr>
+                <tr><td>Risk Assessment</td><td><code>macrosutra-risk-assessment</code></td><td>AITools</td></tr>
+                <tr><td>Market Sentiment</td><td><code>macrosutra-market-sentiment</code></td><td>AITools</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>

@@ -19,6 +19,7 @@
     <ProjectReference Include="..\MacroSutra.Core\MacroSutra.Core.csproj" />
     <ProjectReference Include="..\MacroSutra.Brokers\MacroSutra.Brokers.csproj" />
     <ProjectReference Include="..\MacroSutra.Services\MacroSutra.Services.csproj" />
+    <ProjectReference Include="..\MacroSutra.Tools\MacroSutra.Tools.csproj" />
   </ItemGroup>
 
 </Project>
