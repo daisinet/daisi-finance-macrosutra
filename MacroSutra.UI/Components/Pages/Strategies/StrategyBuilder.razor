@@ -1,5 +1,7 @@
+@page "/strategies/new"
 @page "/strategies/builder"
 @page "/strategies/builder/{Id}"
+@page "/strategies/{Id}"
 
 <PageTitle>Strategy Builder — MacroSutra</PageTitle>
 
@@ -55,8 +57,7 @@
     <BuilderToolbox OnDragPayload="SetDragPayload" />
 
     @* Center: Canvas *@
-    <BuilderCanvas RootGroup="rootGroup"
-                   Actions="strategy.Actions"
+    <BuilderCanvas TriggerGroups="triggerGroups"
                    LiveResults="liveResults"
                    DragPayload="@dragPayload"
                    DragPayloadChanged="SetDragPayload"
@@ -78,7 +79,7 @@
     [Inject] private IDialogService DialogService { get; set; } = default!;
 
     private TradingStrategy strategy = new();
-    private ConditionGroup rootGroup = new();
+    private List<TriggerGroup> triggerGroups = new() { new TriggerGroup { Name = "Trigger 1" } };
     private string? dragPayload;
     private List<ConditionResult>? liveResults;
     private bool isNew => string.IsNullOrEmpty(Id);
@@ -91,11 +92,7 @@
             if (existing != null)
             {
                 strategy = existing;
-                rootGroup = strategy.RootConditionGroup ?? new ConditionGroup
-                {
-                    Logic = strategy.LogicGroup,
-                    Conditions = new List<TriggerCondition>(strategy.Conditions)
-                };
+                triggerGroups = LoadTriggerGroups(strategy);
             }
         }
 
@@ -109,6 +106,14 @@
         }
     }
 
+    private static List<TriggerGroup> LoadTriggerGroups(TradingStrategy s)
+    {
+        if (s.TriggerGroups.Count > 0)
+            return s.TriggerGroups;
+
+        return new List<TriggerGroup> { new() { Name = "Trigger 1" } };
+    }
+
     private async Task ApplyTemplate(string templateId)
     {
         try
@@ -118,20 +123,26 @@
 
             strategy.Name = template.Name;
             strategy.Description = template.Description;
-            rootGroup = new ConditionGroup
+
+            triggerGroups = template.TriggerGroups.Select(tg => new TriggerGroup
             {
-                Logic = template.LogicGroup,
-                Conditions = template.Conditions.Select(c => new TriggerCondition
+                Name = tg.Name, Interval = tg.Interval,
+                Conditions = new ConditionGroup
                 {
-                    ConditionType = c.ConditionType, Operator = c.Operator,
-                    Value = c.Value, Period = c.Period
+                    Logic = tg.Conditions.Logic,
+                    Conditions = tg.Conditions.Conditions.Select(c => new TriggerCondition
+                    {
+                        ConditionType = c.ConditionType, Operator = c.Operator,
+                        Value = c.Value, Period = c.Period
+                    }).ToList()
+                },
+                Actions = tg.Actions.Select(a => new TradeAction
+                {
+                    ActionType = a.ActionType, Side = a.Side,
+                    QuantityType = a.QuantityType, Quantity = a.Quantity
                 }).ToList()
-            };
-            strategy.Actions = template.Actions.Select(a => new TradeAction
-            {
-                ActionType = a.ActionType, Side = a.Side,
-                QuantityType = a.QuantityType, Quantity = a.Quantity
             }).ToList();
+
             Snackbar.Add($"Template '{template.Name}' applied.", Severity.Info);
         }
         catch (Exception ex) { Snackbar.Add($"Failed to load template: {ex.Message}", Severity.Error); }
@@ -173,11 +184,7 @@
         {
             strategy.AccountId = AccountId;
             strategy.UserId = CurrentUser?.id ?? "";
-            strategy.RootConditionGroup = rootGroup;
-
-            // Also populate flat conditions/logic for backward compatibility
-            strategy.Conditions = FlattenConditions(rootGroup);
-            strategy.LogicGroup = rootGroup.Logic;
+            strategy.TriggerGroups = triggerGroups;
 
             if (isNew)
                 await Data.CreateStrategyAsync(strategy);
@@ -185,16 +192,10 @@
                 await Data.UpdateStrategyAsync(strategy);
 
             Snackbar.Add("Strategy saved.", Severity.Success);
-            Nav.NavigateTo("/strategies");
+            if (isNew)
+                Nav.NavigateTo($"/strategies/{strategy.id}");
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
     }
 
-    private static List<TriggerCondition> FlattenConditions(ConditionGroup group)
-    {
-        var list = new List<TriggerCondition>(group.Conditions);
-        foreach (var child in group.ChildGroups)
-            list.AddRange(FlattenConditions(child));
-        return list;
-    }
 }

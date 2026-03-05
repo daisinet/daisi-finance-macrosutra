@@ -58,6 +58,8 @@ public partial class MacroSutraCosmo(IConfiguration configuration, string connec
             BacktestsContainerName => BacktestsPartitionKeyName,
             CommunityContainerName => CommunityPartitionKeyName,
             StrategyPerformanceContainerName => StrategyPerformancePartitionKeyName,
+            DcaSchedulesContainerName => DcaSchedulesPartitionKeyName,
+            RebalanceTargetsContainerName => RebalanceTargetsPartitionKeyName,
             _ => "id"
         };
 

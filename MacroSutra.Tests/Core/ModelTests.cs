@@ -23,9 +23,7 @@ public class ModelTests
         var strategy = new TradingStrategy();
         Assert.Equal(nameof(TradingStrategy), strategy.Type);
         Assert.Empty(strategy.Symbols);
-        Assert.Empty(strategy.Conditions);
-        Assert.Empty(strategy.Actions);
-        Assert.Equal(LogicGroupType.And, strategy.LogicGroup);
+        Assert.Empty(strategy.TriggerGroups);
         Assert.Equal(SizingMode.Fixed, strategy.SizingMode);
         Assert.False(strategy.IsActive);
     }

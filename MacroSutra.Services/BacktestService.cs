@@ -47,13 +47,22 @@ public class BacktestService(
 
         try
         {
-            // Fetch historical bars
-            var bars = timeFrame != null && timeFrame != "Day"
-                ? await marketDataService.GetHistoricalBarsAsync(symbol, from, to, ParseTimeFrame(timeFrame))
-                : await marketDataService.GetHistoricalBarsAsync(symbol, from, to);
+            // Fetch historical bars for each interval used by trigger groups
+            var intervals = strategy.TriggerGroups
+                .Select(tg => tg.Interval)
+                .Distinct()
+                .ToList();
+            if (intervals.Count == 0)
+                intervals.Add(timeFrame != null ? ParseTimeFrame(timeFrame) : Core.Enums.BarTimeFrame.Day);
+
+            var barsByInterval = new Dictionary<Core.Enums.BarTimeFrame, List<OhlcvBar>>();
+            foreach (var interval in intervals)
+            {
+                barsByInterval[interval] = await marketDataService.GetHistoricalBarsAsync(symbol, from, to, interval);
+            }
 
             // Run simulation
-            var engineResult = engine.Run(strategy, symbol, bars, initialCapital, slippageBps, commissionPerTrade);
+            var engineResult = engine.Run(strategy, symbol, barsByInterval, initialCapital, slippageBps, commissionPerTrade);
 
             // Copy engine results to persisted document
             result.Metrics = engineResult.Metrics;

@@ -1,5 +1,6 @@
 using MacroSutra.Core.Enums;
 using MacroSutra.Core.Models;
+using MacroSutra.Core.Models.Options;
 
 namespace MacroSutra.UI.Services;
 
@@ -92,4 +93,36 @@ public interface IDataProvider
     Task<StrategyReview> CreateReviewAsync(string strategyId, string accountId, string userId, string userName, int rating, string? text);
     Task DeleteReviewAsync(string reviewId, string strategyId, string accountId);
     Task<List<LeaderboardEntry>> GetLeaderboardAsync(string sortBy = "sharpe", int limit = 25);
+
+    // Trade export
+    Task<byte[]> ExportTradesCsvAsync(string accountId, string? symbol = null, string? strategyId = null);
+    Task<byte[]> ExportTradesPdfAsync(string accountId, string? symbol = null, string? strategyId = null);
+
+    // Historical market data (charting)
+    Task<List<OhlcvBar>> GetHistoricalBarsAsync(string symbol, DateOnly from, DateOnly to, string timeFrame = "1D");
+
+    // DCA schedules
+    Task<List<DcaSchedule>> GetDcaSchedulesAsync(string accountId);
+    Task<DcaSchedule?> GetDcaScheduleAsync(string id, string accountId);
+    Task<DcaSchedule> CreateDcaScheduleAsync(DcaSchedule schedule);
+    Task<DcaSchedule> UpdateDcaScheduleAsync(DcaSchedule schedule);
+    Task DeleteDcaScheduleAsync(string id, string accountId);
+    Task<DcaSchedule> ActivateDcaScheduleAsync(string id, string accountId);
+    Task<DcaSchedule> DeactivateDcaScheduleAsync(string id, string accountId);
+
+    // Portfolio rebalancing
+    Task<List<RebalanceTarget>> GetRebalanceTargetsAsync(string accountId);
+    Task<RebalanceTarget?> GetRebalanceTargetAsync(string id, string accountId);
+    Task<RebalanceTarget> CreateRebalanceTargetAsync(RebalanceTarget target);
+    Task<RebalanceTarget> UpdateRebalanceTargetAsync(RebalanceTarget target);
+    Task DeleteRebalanceTargetAsync(string id, string accountId);
+    Task<RebalanceAnalysis> AnalyzeRebalanceAsync(string targetId, string accountId);
+    Task<List<Trade>> ExecuteRebalanceAsync(string targetId, string accountId);
+
+    // Tax-loss harvesting
+    Task<TaxLossHarvestingReport> GetTaxLossHarvestingReportAsync(string accountId, string? brokerageAccountId = null);
+
+    // Options
+    Task<OptionsChain> GetOptionsChainAsync(string accountId, string brokerageAccountId, string underlyingSymbol, DateOnly? expiration = null);
+    Task<Trade> PlaceOptionsOrderAsync(Trade trade);
 }

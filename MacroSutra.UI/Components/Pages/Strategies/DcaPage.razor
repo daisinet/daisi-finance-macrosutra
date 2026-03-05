@@ -1,0 +1,160 @@
+@page "/dca"
+@using MacroSutra.Core.Enums
+
+<PageTitle>Dollar-Cost Averaging — MacroSutra</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Dollar-Cost Averaging</MudText>
+
+<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => showCreate = true)" Class="mb-4">
+    <MudIcon Icon="@Icons.Material.Filled.Add" Class="me-1" /> New DCA Schedule
+</MudButton>
+
+<MudTable Items="@schedules" Hover="true" Striped="true" Dense="true" Loading="@loading">
+    <HeaderContent>
+        <MudTh>Name</MudTh>
+        <MudTh>Symbol</MudTh>
+        <MudTh>Amount</MudTh>
+        <MudTh>Frequency</MudTh>
+        <MudTh>Next Execution</MudTh>
+        <MudTh>Total Invested</MudTh>
+        <MudTh>Executions</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh>Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.Name</MudTd>
+        <MudTd><strong>@context.Symbol</strong></MudTd>
+        <MudTd>@context.InvestmentAmount.ToString("C")</MudTd>
+        <MudTd>@context.Frequency</MudTd>
+        <MudTd>@(context.NextExecutionUtc?.ToString("MMM dd, HH:mm") ?? "—")</MudTd>
+        <MudTd>@context.TotalInvested.ToString("C")</MudTd>
+        <MudTd>@context.TotalExecutions</MudTd>
+        <MudTd>
+            <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">
+                @(context.IsActive ? "Active" : "Paused")
+            </MudChip>
+        </MudTd>
+        <MudTd>
+            @if (context.IsActive)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Pause" Size="Size.Small" Title="Pause"
+                               OnClick="@(() => ToggleSchedule(context))" />
+            }
+            else
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small" Color="Color.Success" Title="Resume"
+                               OnClick="@(() => ToggleSchedule(context))" />
+            }
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" Title="Delete"
+                           OnClick="@(() => DeleteSchedule(context))" />
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+<MudDialog @bind-Visible="showCreate">
+    <TitleContent>New DCA Schedule</TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="newSchedule.Name" Label="Name" Required="true" Class="mb-3" />
+        <MudTextField @bind-Value="newSchedule.Symbol" Label="Symbol" Required="true" Class="mb-3" />
+        <MudNumericField @bind-Value="newSchedule.InvestmentAmount" Label="Investment Amount ($)" Min="1" Class="mb-3" />
+        <MudSelect @bind-Value="newSchedule.Frequency" Label="Frequency" Class="mb-3">
+            @foreach (var f in Enum.GetValues<DcaFrequency>())
+            {
+                <MudSelectItem Value="@f">@f</MudSelectItem>
+            }
+        </MudSelect>
+        @if (newSchedule.Frequency is DcaFrequency.Weekly or DcaFrequency.BiWeekly)
+        {
+            <MudSelect @bind-Value="newScheduleDayOfWeek" Label="Day of Week" Class="mb-3">
+                @foreach (var d in Enum.GetValues<DayOfWeek>())
+                {
+                    <MudSelectItem Value="@((DayOfWeek?)d)">@d</MudSelectItem>
+                }
+            </MudSelect>
+        }
+        @if (newSchedule.Frequency == DcaFrequency.Monthly)
+        {
+            <MudNumericField @bind-Value="newScheduleDayOfMonth" Label="Day of Month" Min="1" Max="28" Class="mb-3" />
+        }
+        <MudSelect @bind-Value="newSchedule.BrokerageAccountId" Label="Brokerage Account" Class="mb-3">
+            @foreach (var a in brokerageAccounts)
+            {
+                <MudSelectItem Value="@a.id">@a.Name (@a.Provider)</MudSelectItem>
+            }
+        </MudSelect>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => showCreate = false)">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateSchedule">Create</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
+    [CascadingParameter(Name = "CurrentUser")] private MacroSutraUser? CurrentUser { get; set; }
+    [Inject] private IDataProvider Data { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+
+    private List<DcaSchedule> schedules = new();
+    private List<BrokerageAccount> brokerageAccounts = new();
+    private bool loading = true;
+    private bool showCreate;
+    private DcaSchedule newSchedule = new();
+    private DayOfWeek? newScheduleDayOfWeek = DayOfWeek.Monday;
+    private int? newScheduleDayOfMonth = 1;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(AccountId)) return;
+        loading = true;
+        try
+        {
+            schedules = await Data.GetDcaSchedulesAsync(AccountId);
+            brokerageAccounts = await Data.GetBrokerageAccountsAsync(AccountId, activeOnly: true);
+        }
+        catch { }
+        finally { loading = false; }
+    }
+
+    private async Task CreateSchedule()
+    {
+        try
+        {
+            newSchedule.AccountId = AccountId;
+            newSchedule.UserId = CurrentUser?.id ?? "";
+            newSchedule.DayOfWeek = newScheduleDayOfWeek;
+            newSchedule.DayOfMonth = newScheduleDayOfMonth;
+            newSchedule.Symbol = newSchedule.Symbol.Trim().ToUpperInvariant();
+            await Data.CreateDcaScheduleAsync(newSchedule);
+            Snackbar.Add("DCA schedule created.", Severity.Success);
+            showCreate = false;
+            newSchedule = new();
+            schedules = await Data.GetDcaSchedulesAsync(AccountId);
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task ToggleSchedule(DcaSchedule schedule)
+    {
+        try
+        {
+            if (schedule.IsActive)
+                await Data.DeactivateDcaScheduleAsync(schedule.id, AccountId);
+            else
+                await Data.ActivateDcaScheduleAsync(schedule.id, AccountId);
+            schedules = await Data.GetDcaSchedulesAsync(AccountId);
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task DeleteSchedule(DcaSchedule schedule)
+    {
+        try
+        {
+            await Data.DeleteDcaScheduleAsync(schedule.id, AccountId);
+            schedules = await Data.GetDcaSchedulesAsync(AccountId);
+            Snackbar.Add("Schedule deleted.", Severity.Info);
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+}

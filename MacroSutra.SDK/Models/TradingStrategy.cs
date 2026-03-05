@@ -14,10 +14,8 @@ public class TradingStrategy
     public DateTime? LastEvaluatedUtc { get; set; }
     public DateTime? LastTriggeredUtc { get; set; }
 
-    // Conditions and actions
-    public string LogicGroup { get; set; } = "And";
-    public List<StrategyCondition> Conditions { get; set; } = new();
-    public List<StrategyAction> Actions { get; set; } = new();
+    // Trigger groups (each with its own conditions and actions)
+    public List<SdkTriggerGroup> TriggerGroups { get; set; } = new();
 
     // Strategy configuration
     public string SizingMode { get; set; } = "Fixed";
@@ -25,6 +23,16 @@ public class TradingStrategy
     public long SubscriptionCreditPrice { get; set; }
     public int SubscriptionPeriodDays { get; set; } = 30;
     public string? ForkedFromStrategyId { get; set; }
+}
+
+public class SdkTriggerGroup
+{
+    public string GroupId { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string Interval { get; set; } = "Day";
+    public string Logic { get; set; } = "And";
+    public List<StrategyCondition> Conditions { get; set; } = new();
+    public List<StrategyAction> Actions { get; set; } = new();
 }
 
 public class StrategyCondition

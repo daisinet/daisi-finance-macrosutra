@@ -1,5 +1,7 @@
+using System.Text.Json;
 using MacroSutra.Core.Enums;
 using MacroSutra.Core.Models;
+using MacroSutra.Core.Models.Options;
 using MacroSutra.SDK;
 using MacroSutra.UI.Services;
 
@@ -11,6 +13,7 @@ namespace MacroSutra.App.Services;
 /// </summary>
 public class SdkDataProvider(MacroSutraClientFactory clientFactory, MauiAuthProvider authProvider) : IDataProvider
 {
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
     private async Task<MacroSutraClient> GetClientAsync()
     {
         var clientKey = await authProvider.GetClientKeyAsync()
@@ -53,20 +56,7 @@ public class SdkDataProvider(MacroSutraClientFactory clientFactory, MauiAuthProv
         return sdkTemplates.Select(t => new StrategyTemplate
         {
             Id = t.Id, Name = t.Name, Description = t.Description, Category = t.Category,
-            LogicGroup = Enum.TryParse<Core.Enums.LogicGroupType>(t.LogicGroup, true, out var lg) ? lg : Core.Enums.LogicGroupType.And,
-            Conditions = t.Conditions.Select(c => new TriggerCondition
-            {
-                ConditionType = Enum.TryParse<ConditionType>(c.ConditionType, true, out var ct) ? ct : ConditionType.Price,
-                Operator = Enum.TryParse<Core.Enums.ConditionOperator>(c.Operator, true, out var op) ? op : Core.Enums.ConditionOperator.GreaterThan,
-                Value = c.Value, Period = c.Period
-            }).ToList(),
-            Actions = t.Actions.Select(a => new TradeAction
-            {
-                ActionType = Enum.TryParse<Core.Enums.TradeActionType>(a.ActionType, true, out var at) ? at : Core.Enums.TradeActionType.MarketOrder,
-                Side = Enum.TryParse<Core.Enums.TradeSide>(a.Side, true, out var s) ? s : Core.Enums.TradeSide.Buy,
-                QuantityType = Enum.TryParse<Core.Enums.QuantityType>(a.QuantityType, true, out var qt) ? qt : Core.Enums.QuantityType.Shares,
-                Quantity = a.Quantity
-            }).ToList()
+            TriggerGroups = MapTriggerGroupsFromSdk(t.TriggerGroups)
         }).ToList();
     }
 
@@ -78,20 +68,7 @@ public class SdkDataProvider(MacroSutraClientFactory clientFactory, MauiAuthProv
         return new StrategyTemplate
         {
             Id = t.Id, Name = t.Name, Description = t.Description, Category = t.Category,
-            LogicGroup = Enum.TryParse<Core.Enums.LogicGroupType>(t.LogicGroup, true, out var lg) ? lg : Core.Enums.LogicGroupType.And,
-            Conditions = t.Conditions.Select(c => new TriggerCondition
-            {
-                ConditionType = Enum.TryParse<ConditionType>(c.ConditionType, true, out var ct) ? ct : ConditionType.Price,
-                Operator = Enum.TryParse<Core.Enums.ConditionOperator>(c.Operator, true, out var op) ? op : Core.Enums.ConditionOperator.GreaterThan,
-                Value = c.Value, Period = c.Period
-            }).ToList(),
-            Actions = t.Actions.Select(a => new TradeAction
-            {
-                ActionType = Enum.TryParse<Core.Enums.TradeActionType>(a.ActionType, true, out var at) ? at : Core.Enums.TradeActionType.MarketOrder,
-                Side = Enum.TryParse<Core.Enums.TradeSide>(a.Side, true, out var s) ? s : Core.Enums.TradeSide.Buy,
-                QuantityType = Enum.TryParse<Core.Enums.QuantityType>(a.QuantityType, true, out var qt) ? qt : Core.Enums.QuantityType.Shares,
-                Quantity = a.Quantity
-            }).ToList()
+            TriggerGroups = MapTriggerGroupsFromSdk(t.TriggerGroups)
         };
     }
 
@@ -132,22 +109,12 @@ public class SdkDataProvider(MacroSutraClientFactory clientFactory, MauiAuthProv
     {
         Id = s.id, Name = s.Name, Description = s.Description,
         Symbols = s.Symbols, IsActive = s.IsActive, IsPublic = s.IsPublic,
-        LogicGroup = s.LogicGroup.ToString(),
         SizingMode = s.SizingMode.ToString(),
         Visibility = s.Visibility.ToString(),
         SubscriptionCreditPrice = s.SubscriptionCreditPrice,
         SubscriptionPeriodDays = s.SubscriptionPeriodDays,
         ForkedFromStrategyId = s.ForkedFromStrategyId,
-        Conditions = s.Conditions.Select(c => new SDK.Models.StrategyCondition
-        {
-            ConditionId = c.ConditionId, ConditionType = c.ConditionType.ToString(),
-            Operator = c.Operator.ToString(), Value = c.Value, Period = c.Period
-        }).ToList(),
-        Actions = s.Actions.Select(a => new SDK.Models.StrategyAction
-        {
-            ActionType = a.ActionType.ToString(), Side = a.Side.ToString(),
-            QuantityType = a.QuantityType.ToString(), Quantity = a.Quantity
-        }).ToList()
+        TriggerGroups = MapTriggerGroupsToSdk(s.TriggerGroups)
     };
 
     private static TradingStrategy MapFromSdkStrategy(SDK.Models.TradingStrategy sdk) => new()
@@ -158,27 +125,54 @@ public class SdkDataProvider(MacroSutraClientFactory clientFactory, MauiAuthProv
         CreatedUtc = sdk.CreatedUtc,
         LastEvaluatedUtc = sdk.LastEvaluatedUtc,
         LastTriggeredUtc = sdk.LastTriggeredUtc,
-        LogicGroup = Enum.TryParse<LogicGroupType>(sdk.LogicGroup, true, out var lg) ? lg : LogicGroupType.And,
         SizingMode = Enum.TryParse<SizingMode>(sdk.SizingMode, true, out var sm) ? sm : Core.Enums.SizingMode.Fixed,
         Visibility = Enum.TryParse<StrategyVisibility>(sdk.Visibility, true, out var v) ? v : StrategyVisibility.Private,
         SubscriptionCreditPrice = sdk.SubscriptionCreditPrice,
         SubscriptionPeriodDays = sdk.SubscriptionPeriodDays,
         ForkedFromStrategyId = sdk.ForkedFromStrategyId,
-        Conditions = sdk.Conditions.Select(c => new TriggerCondition
-        {
-            ConditionId = c.ConditionId,
-            ConditionType = Enum.TryParse<ConditionType>(c.ConditionType, true, out var ct) ? ct : ConditionType.Price,
-            Operator = Enum.TryParse<ConditionOperator>(c.Operator, true, out var op) ? op : ConditionOperator.GreaterThan,
-            Value = c.Value, Period = c.Period
-        }).ToList(),
-        Actions = sdk.Actions.Select(a => new TradeAction
-        {
-            ActionType = Enum.TryParse<TradeActionType>(a.ActionType, true, out var at) ? at : TradeActionType.MarketOrder,
-            Side = Enum.TryParse<TradeSide>(a.Side, true, out var s) ? s : TradeSide.Buy,
-            QuantityType = Enum.TryParse<QuantityType>(a.QuantityType, true, out var qt) ? qt : QuantityType.Shares,
-            Quantity = a.Quantity
-        }).ToList()
+        TriggerGroups = MapTriggerGroupsFromSdk(sdk.TriggerGroups)
     };
+
+    private static List<SDK.Models.SdkTriggerGroup> MapTriggerGroupsToSdk(List<TriggerGroup> groups) =>
+        groups.Select(tg => new SDK.Models.SdkTriggerGroup
+        {
+            GroupId = tg.GroupId, Name = tg.Name, Interval = tg.Interval.ToString(), Logic = tg.Conditions.Logic.ToString(),
+            Conditions = tg.Conditions.Conditions.Select(c => new SDK.Models.StrategyCondition
+            {
+                ConditionId = c.ConditionId, ConditionType = c.ConditionType.ToString(),
+                Operator = c.Operator.ToString(), Value = c.Value, Period = c.Period
+            }).ToList(),
+            Actions = tg.Actions.Select(a => new SDK.Models.StrategyAction
+            {
+                ActionType = a.ActionType.ToString(), Side = a.Side.ToString(),
+                QuantityType = a.QuantityType.ToString(), Quantity = a.Quantity
+            }).ToList()
+        }).ToList();
+
+    private static List<TriggerGroup> MapTriggerGroupsFromSdk(List<SDK.Models.SdkTriggerGroup> groups) =>
+        groups.Select(tg => new TriggerGroup
+        {
+            GroupId = tg.GroupId, Name = tg.Name,
+            Interval = Enum.TryParse<BarTimeFrame>(tg.Interval, true, out var iv) ? iv : BarTimeFrame.Day,
+            Conditions = new ConditionGroup
+            {
+                Logic = Enum.TryParse<LogicGroupType>(tg.Logic, true, out var lg) ? lg : LogicGroupType.And,
+                Conditions = tg.Conditions.Select(c => new TriggerCondition
+                {
+                    ConditionId = c.ConditionId,
+                    ConditionType = Enum.TryParse<ConditionType>(c.ConditionType, true, out var ct) ? ct : ConditionType.Price,
+                    Operator = Enum.TryParse<ConditionOperator>(c.Operator, true, out var op) ? op : ConditionOperator.GreaterThan,
+                    Value = c.Value, Period = c.Period
+                }).ToList()
+            },
+            Actions = tg.Actions.Select(a => new TradeAction
+            {
+                ActionType = Enum.TryParse<TradeActionType>(a.ActionType, true, out var at) ? at : TradeActionType.MarketOrder,
+                Side = Enum.TryParse<TradeSide>(a.Side, true, out var s) ? s : TradeSide.Buy,
+                QuantityType = Enum.TryParse<QuantityType>(a.QuantityType, true, out var qt) ? qt : QuantityType.Shares,
+                Quantity = a.Quantity
+            }).ToList()
+        }).ToList();
 
     public async Task<TradingStrategy> ActivateStrategyAsync(string id, string accountId)
     {
@@ -667,5 +661,165 @@ public class SdkDataProvider(MacroSutraClientFactory clientFactory, MauiAuthProv
             AverageRating = e.AverageRating, ReviewCount = e.ReviewCount,
             SubscriberCount = e.SubscriberCount
         }).ToList();
+    }
+
+    // Trade export
+    public async Task<byte[]> ExportTradesCsvAsync(string accountId, string? symbol = null, string? strategyId = null)
+    {
+        using var client = await GetClientAsync();
+        return await client.Trades.ExportCsvAsync(symbol, strategyId);
+    }
+
+    public async Task<byte[]> ExportTradesPdfAsync(string accountId, string? symbol = null, string? strategyId = null)
+    {
+        using var client = await GetClientAsync();
+        return await client.Trades.ExportPdfAsync(symbol, strategyId);
+    }
+
+    // Historical market data
+    public async Task<List<OhlcvBar>> GetHistoricalBarsAsync(string symbol, DateOnly from, DateOnly to, string timeFrame = "1D")
+    {
+        using var client = await GetClientAsync();
+        var bars = await client.MarketData.GetHistoricalBarsAsync(symbol, from, to, timeFrame);
+        return bars.Select(b => new OhlcvBar(
+            DateOnly.FromDateTime(b.Time), b.Open, b.High, b.Low, b.Close, b.Volume)
+        { Timestamp = b.Time }).ToList();
+    }
+
+    // DCA schedules
+    public async Task<List<DcaSchedule>> GetDcaSchedulesAsync(string accountId)
+    {
+        using var client = await GetClientAsync();
+        var elements = await client.Dca.GetSchedulesAsync();
+        return elements.Select(e => System.Text.Json.JsonSerializer.Deserialize<DcaSchedule>(e.GetRawText(), JsonOptions)!)
+            .ToList();
+    }
+
+    public async Task<DcaSchedule?> GetDcaScheduleAsync(string id, string accountId)
+    {
+        using var client = await GetClientAsync();
+        var el = await client.Dca.GetScheduleAsync(id);
+        return el.HasValue ? System.Text.Json.JsonSerializer.Deserialize<DcaSchedule>(el.Value.GetRawText(), JsonOptions) : null;
+    }
+
+    public async Task<DcaSchedule> CreateDcaScheduleAsync(DcaSchedule schedule)
+    {
+        using var client = await GetClientAsync();
+        var el = await client.Dca.CreateScheduleAsync(schedule);
+        return System.Text.Json.JsonSerializer.Deserialize<DcaSchedule>(el.GetRawText(), JsonOptions) ?? schedule;
+    }
+
+    public async Task<DcaSchedule> UpdateDcaScheduleAsync(DcaSchedule schedule)
+    {
+        using var client = await GetClientAsync();
+        var el = await client.Dca.UpdateScheduleAsync(schedule.id, schedule);
+        return System.Text.Json.JsonSerializer.Deserialize<DcaSchedule>(el.GetRawText(), JsonOptions) ?? schedule;
+    }
+
+    public async Task DeleteDcaScheduleAsync(string id, string accountId)
+    {
+        using var client = await GetClientAsync();
+        await client.Dca.DeleteScheduleAsync(id);
+    }
+
+    public async Task<DcaSchedule> ActivateDcaScheduleAsync(string id, string accountId)
+    {
+        using var client = await GetClientAsync();
+        var el = await client.Dca.ActivateScheduleAsync(id);
+        return System.Text.Json.JsonSerializer.Deserialize<DcaSchedule>(el.GetRawText(), JsonOptions) ?? new();
+    }
+
+    public async Task<DcaSchedule> DeactivateDcaScheduleAsync(string id, string accountId)
+    {
+        using var client = await GetClientAsync();
+        var el = await client.Dca.DeactivateScheduleAsync(id);
+        return System.Text.Json.JsonSerializer.Deserialize<DcaSchedule>(el.GetRawText(), JsonOptions) ?? new();
+    }
+
+    // Portfolio rebalancing
+    public async Task<List<RebalanceTarget>> GetRebalanceTargetsAsync(string accountId)
+    {
+        using var client = await GetClientAsync();
+        var elements = await client.Portfolio.GetRebalanceTargetsAsync();
+        return elements.Select(e => System.Text.Json.JsonSerializer.Deserialize<RebalanceTarget>(e.GetRawText(), JsonOptions)!)
+            .ToList();
+    }
+
+    public async Task<RebalanceTarget?> GetRebalanceTargetAsync(string id, string accountId)
+    {
+        using var client = await GetClientAsync();
+        var el = await client.Portfolio.GetRebalanceTargetAsync(id);
+        return el.HasValue ? System.Text.Json.JsonSerializer.Deserialize<RebalanceTarget>(el.Value.GetRawText(), JsonOptions) : null;
+    }
+
+    public async Task<RebalanceTarget> CreateRebalanceTargetAsync(RebalanceTarget target)
+    {
+        using var client = await GetClientAsync();
+        var el = await client.Portfolio.CreateRebalanceTargetAsync(target);
+        return System.Text.Json.JsonSerializer.Deserialize<RebalanceTarget>(el.GetRawText(), JsonOptions) ?? target;
+    }
+
+    public async Task<RebalanceTarget> UpdateRebalanceTargetAsync(RebalanceTarget target)
+    {
+        using var client = await GetClientAsync();
+        var el = await client.Portfolio.UpdateRebalanceTargetAsync(target.id, target);
+        return System.Text.Json.JsonSerializer.Deserialize<RebalanceTarget>(el.GetRawText(), JsonOptions) ?? target;
+    }
+
+    public async Task DeleteRebalanceTargetAsync(string id, string accountId)
+    {
+        using var client = await GetClientAsync();
+        await client.Portfolio.DeleteRebalanceTargetAsync(id);
+    }
+
+    public async Task<RebalanceAnalysis> AnalyzeRebalanceAsync(string targetId, string accountId)
+    {
+        using var client = await GetClientAsync();
+        var el = await client.Portfolio.AnalyzeRebalanceAsync(targetId);
+        return System.Text.Json.JsonSerializer.Deserialize<RebalanceAnalysis>(el.GetRawText(), JsonOptions) ?? new();
+    }
+
+    public async Task<List<Trade>> ExecuteRebalanceAsync(string targetId, string accountId)
+    {
+        using var client = await GetClientAsync();
+        var sdkTrades = await client.Portfolio.ExecuteRebalanceAsync(targetId);
+        return sdkTrades.Select(t => new Trade
+        {
+            id = t.Id, AccountId = t.AccountId, Symbol = t.Symbol,
+            Quantity = t.Quantity, Status = TradeStatus.Submitted
+        }).ToList();
+    }
+
+    // Tax-loss harvesting
+    public async Task<TaxLossHarvestingReport> GetTaxLossHarvestingReportAsync(string accountId, string? brokerageAccountId = null)
+    {
+        using var client = await GetClientAsync();
+        var el = await client.Portfolio.GetTaxLossHarvestingReportAsync(brokerageAccountId);
+        return System.Text.Json.JsonSerializer.Deserialize<TaxLossHarvestingReport>(el.GetRawText(), JsonOptions) ?? new();
+    }
+
+    // Options
+    public async Task<OptionsChain> GetOptionsChainAsync(string accountId, string brokerageAccountId, string underlyingSymbol, DateOnly? expiration = null)
+    {
+        using var client = await GetClientAsync();
+        var el = await client.Portfolio.GetOptionsChainAsync(brokerageAccountId, underlyingSymbol, expiration);
+        return System.Text.Json.JsonSerializer.Deserialize<OptionsChain>(el.GetRawText(), JsonOptions) ?? new();
+    }
+
+    public async Task<Trade> PlaceOptionsOrderAsync(Trade trade)
+    {
+        using var client = await GetClientAsync();
+        var result = await client.Portfolio.PlaceOptionsOrderAsync(new SDK.Models.OptionsOrderRequest
+        {
+            BrokerageAccountId = trade.BrokerageAccountId!,
+            Symbol = trade.Symbol,
+            Side = trade.Side.ToString(),
+            OrderType = trade.OrderType.ToString(),
+            Quantity = trade.Quantity,
+            LimitPrice = trade.LimitPrice
+        });
+        trade.id = result?.Id ?? "";
+        trade.Status = TradeStatus.Submitted;
+        return trade;
     }
 }

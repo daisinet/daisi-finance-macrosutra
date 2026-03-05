@@ -32,13 +32,17 @@ public class CommunityServiceTests
             Symbols = new List<string> { "AAPL", "MSFT" },
             Visibility = StrategyVisibility.Public,
             IsActive = true,
-            Conditions = new List<TriggerCondition>
+            TriggerGroups = new()
             {
-                new() { ConditionType = ConditionType.RSI, Operator = ConditionOperator.LessThan, Value = 30 }
-            },
-            Actions = new List<TradeAction>
-            {
-                new() { ActionType = TradeActionType.MarketOrder, Side = TradeSide.Buy, Quantity = 10 }
+                new TriggerGroup
+                {
+                    Name = "Buy Signal",
+                    Conditions = new ConditionGroup
+                    {
+                        Conditions = new() { new() { ConditionType = ConditionType.RSI, Operator = ConditionOperator.LessThan, Value = 30 } }
+                    },
+                    Actions = new() { new() { ActionType = TradeActionType.MarketOrder, Side = TradeSide.Buy, Quantity = 10 } }
+                }
             }
         };
 
@@ -56,8 +60,9 @@ public class CommunityServiceTests
         Assert.Contains("Fork", result.Name);
         Assert.Equal("Buy the dip", result.Description);
         Assert.Equal(2, result.Symbols.Count);
-        Assert.Single(result.Conditions);
-        Assert.Single(result.Actions);
+        Assert.Single(result.TriggerGroups);
+        Assert.Single(result.TriggerGroups[0].Conditions.Conditions);
+        Assert.Single(result.TriggerGroups[0].Actions);
         Assert.False(result.IsActive);
         Assert.Equal(StrategyVisibility.Private, result.Visibility);
         Assert.Equal("str-source", result.ForkedFromStrategyId);

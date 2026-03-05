@@ -12,6 +12,8 @@ namespace MacroSutra.Brokers;
 /// </summary>
 public class PublicComBrokerageProvider(IHttpClientFactory httpClientFactory) : IBrokerageProvider
 {
+    public bool SupportsFractionalShares => true;
+
     private const string LiveBaseUrl = "https://api.public.com/v1";
     private const string SandboxBaseUrl = "https://sandbox.public.com/v1";
 

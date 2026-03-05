@@ -35,6 +35,14 @@
             <MudChip T="string" Size="Size.Small" Color="@(context.IsPaperTrading || context.Provider == BrokerageProvider.Paper ? Color.Warning : Color.Success)">
                 @(context.IsPaperTrading || context.Provider == BrokerageProvider.Paper ? "Paper" : "Live")
             </MudChip>
+            @if (SupportsFractionalShares(context.Provider))
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Info">Fractional Shares</MudChip>
+            }
+            @if (SupportsOptions(context.Provider))
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Tertiary">Options</MudChip>
+            }
         </MudTd>
         <MudTd>@(context.CachedBalance?.ToString("C") ?? "—")</MudTd>
         <MudTd>@(context.LastSyncUtc?.ToString("MMM dd, HH:mm") ?? "Never")</MudTd>
@@ -474,4 +482,10 @@
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
     }
+
+    private static bool SupportsFractionalShares(BrokerageProvider provider) =>
+        provider is BrokerageProvider.Alpaca or BrokerageProvider.Paper or BrokerageProvider.PublicCom;
+
+    private static bool SupportsOptions(BrokerageProvider provider) =>
+        provider is BrokerageProvider.Alpaca or BrokerageProvider.Tastytrade;
 }

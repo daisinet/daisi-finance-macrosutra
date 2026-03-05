@@ -1,0 +1,52 @@
+@page "/learn/charting"
+@layout MacroSutra.Web.Components.Layout.LandingLayout
+
+<PageTitle>MacroSutra - Advanced Charting Guide</PageTitle>
+
+<section class="landing-section">
+    <div class="landing-container">
+        <h1>Advanced Charting</h1>
+        <p>MacroSutra includes interactive candlestick and line charts powered by TradingView Lightweight Charts. Use charts to visualize price action, identify patterns, and validate strategy ideas.</p>
+
+        <h2 id="getting-started" class="mt-4">Using the Chart Page</h2>
+        <ol>
+            <li>Navigate to <strong>Trading &rarr; Charts</strong> in the sidebar.</li>
+            <li>Enter a stock symbol (e.g., <strong>AAPL</strong>, <strong>TSLA</strong>).</li>
+            <li>Select a timeframe: <strong>1D</strong> (daily), <strong>1W</strong> (weekly), or <strong>1M</strong> (monthly).</li>
+            <li>Click <strong>Load Chart</strong>. The chart renders with candlestick bars showing Open, High, Low, and Close prices along with volume.</li>
+        </ol>
+
+        <h2 id="chart-types" class="mt-4">Chart Types</h2>
+        <ul>
+            <li><strong>Candlestick</strong> &mdash; The default view. Green candles indicate the close was above the open; red candles indicate the close was below. Wicks show the high and low.</li>
+            <li><strong>Line</strong> &mdash; A simpler view connecting closing prices. Useful for spotting overall trends without intraday noise.</li>
+        </ul>
+
+        <h2 id="timeframes" class="mt-4">Timeframes</h2>
+        <p>Charts support three bar resolutions:</p>
+        <ul>
+            <li><strong>Daily (1D)</strong> &mdash; Each bar represents one trading day. Shows the last ~6 months by default.</li>
+            <li><strong>Weekly (1W)</strong> &mdash; Each bar aggregates one calendar week. Shows the last ~2 years.</li>
+            <li><strong>Monthly (1M)</strong> &mdash; Each bar aggregates one calendar month. Shows the full available history.</li>
+        </ul>
+
+        <h2 id="interactions" class="mt-4">Interacting with Charts</h2>
+        <ul>
+            <li><strong>Zoom</strong> &mdash; Use the mouse wheel or pinch gesture to zoom in and out.</li>
+            <li><strong>Pan</strong> &mdash; Click and drag to scroll through time.</li>
+            <li><strong>Crosshair</strong> &mdash; Hover over a bar to see its OHLCV values in the tooltip.</li>
+            <li><strong>Auto-resize</strong> &mdash; Charts automatically resize when the browser window changes.</li>
+        </ul>
+
+        <h2 id="api" class="mt-4">API &amp; SDK</h2>
+        <p>Historical bar data is available programmatically:</p>
+<pre><code>var bars = await client.MarketData.GetHistoricalBarsAsync(
+    symbol: "AAPL",
+    from: new DateOnly(2024, 1, 1),
+    to: new DateOnly(2025, 1, 1),
+    timeFrame: "1D");</code></pre>
+        <p>Each bar contains: <code>Time</code>, <code>Open</code>, <code>High</code>, <code>Low</code>, <code>Close</code>, and <code>Volume</code>.</p>
+
+        <p class="mt-4"><a href="/learn">&larr; Back to Learn</a></p>
+    </div>
+</section>

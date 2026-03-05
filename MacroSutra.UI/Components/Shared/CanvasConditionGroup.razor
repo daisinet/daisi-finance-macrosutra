@@ -1,8 +1,10 @@
 @* Recursive visual condition group for the builder canvas *@
 
-<MudPaper Class="@($"pa-3 mb-2 condition-group-depth-{Math.Min(Depth, 3)}")" Outlined="true"
-          @ondrop="HandleDrop" @ondragover:preventDefault="true"
-          @ondragenter="HandleDragOver" @ondragleave="HandleDragLeave">
+<div class="@($"canvas-condition-drop-target {(isDragOver ? "drag-over" : "")}")"
+     @ondrop="HandleDrop" @ondrop:stopPropagation="true"
+     @ondragover="HandleDragOver" @ondragover:preventDefault="true"
+     @ondragenter="HandleDragOver" @ondragleave="HandleDragLeave">
+<MudPaper Class="@($"pa-3 mb-2 condition-group-depth-{Math.Min(Depth, 3)}")" Outlined="true">
     <div class="d-flex align-center mb-2">
         <MudToggleGroup T="LogicGroupType" @bind-Value="Group.Logic" Color="Color.Primary" Dense="true" Class="me-3">
             <MudToggleItem T="LogicGroupType" Value="LogicGroupType.And" Text="AND" />
@@ -62,6 +64,7 @@
         }
     </MudStack>
 </MudPaper>
+</div>
 
 @code {
     [Parameter] public ConditionGroup Group { get; set; } = new();

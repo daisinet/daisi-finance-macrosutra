@@ -8,39 +8,47 @@
         <MudChip T="string" Size="Size.Small" Color="Color.Info" Class="mb-2">@Template.Category</MudChip>
         <MudText Typo="Typo.body1" Class="mb-4">@Template.Description</MudText>
 
-        <MudText Typo="Typo.subtitle1" Class="mb-2">Conditions (@Template.LogicGroup)</MudText>
-        @foreach (var condition in Template.Conditions)
+        @foreach (var group in Template.TriggerGroups)
         {
-            <MudPaper Class="pa-2 mb-1" Outlined="true">
-                <div class="d-flex align-center gap-2">
-                    <MudIcon Icon="@ConditionWizardHelper.GetConditionTypeInfo(condition.ConditionType).Icon" Size="Size.Small" />
-                    <MudText Typo="Typo.body2">
-                        @ConditionWizardHelper.DescribeCondition(condition)
-                    </MudText>
-                    <span class="condition-badge-@ConditionWizardHelper.GetConditionColor(condition.ConditionType) px-2 py-1"
-                          style="border-radius: 4px; font-size: 0.7rem; font-weight: 600;">
-                        @ConditionWizardHelper.GetConditionTypeInfo(condition.ConditionType).Category
-                    </span>
-                </div>
-            </MudPaper>
-        }
+            <MudText Typo="Typo.subtitle1" Class="mb-2 mt-3">@group.Name</MudText>
 
-        <MudDivider Class="my-3" />
+            <MudText Typo="Typo.subtitle2" Class="mb-1">Conditions (@group.Conditions.Logic)</MudText>
+            @foreach (var condition in group.Conditions.Conditions)
+            {
+                <MudPaper Class="pa-2 mb-1" Outlined="true">
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@ConditionWizardHelper.GetConditionTypeInfo(condition.ConditionType).Icon" Size="Size.Small" />
+                        <MudText Typo="Typo.body2">
+                            @ConditionWizardHelper.DescribeCondition(condition)
+                        </MudText>
+                        <span class="condition-badge-@ConditionWizardHelper.GetConditionColor(condition.ConditionType) px-2 py-1"
+                              style="border-radius: 4px; font-size: 0.7rem; font-weight: 600;">
+                            @ConditionWizardHelper.GetConditionTypeInfo(condition.ConditionType).Category
+                        </span>
+                    </div>
+                </MudPaper>
+            }
 
-        <MudText Typo="Typo.subtitle1" Class="mb-2">Actions</MudText>
-        @foreach (var action in Template.Actions)
-        {
-            <MudPaper Class="pa-2 mb-1" Outlined="true">
-                <div class="d-flex align-center gap-2">
-                    <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" Size="Size.Small" />
-                    <MudChip T="string" Size="Size.Small" Color="@(action.Side == TradeSide.Buy ? Color.Success : Color.Error)">
-                        @action.Side
-                    </MudChip>
-                    <MudText Typo="Typo.body2">
-                        @action.ActionType — @action.Quantity @action.QuantityType
-                    </MudText>
-                </div>
-            </MudPaper>
+            <MudText Typo="Typo.subtitle2" Class="mb-1 mt-2">Actions</MudText>
+            @foreach (var action in group.Actions)
+            {
+                <MudPaper Class="pa-2 mb-1" Outlined="true">
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" Size="Size.Small" />
+                        <MudChip T="string" Size="Size.Small" Color="@(action.Side == TradeSide.Buy ? Color.Success : Color.Error)">
+                            @action.Side
+                        </MudChip>
+                        <MudText Typo="Typo.body2">
+                            @action.ActionType — @action.Quantity @action.QuantityType
+                        </MudText>
+                    </div>
+                </MudPaper>
+            }
+
+            @if (group != Template.TriggerGroups.Last())
+            {
+                <MudDivider Class="my-3" />
+            }
         }
     </DialogContent>
     <DialogActions>

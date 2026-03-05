@@ -20,4 +20,20 @@ public class TradeClient(HttpClient http)
     {
         return await http.GetFromJsonAsync<Trade>($"/api/trades/{id}", MacroSutraClient.JsonOptions);
     }
+
+    public async Task<byte[]> ExportCsvAsync(string? symbol = null, string? strategyId = null)
+    {
+        var url = "/api/trades/export?format=csv";
+        if (!string.IsNullOrEmpty(symbol)) url += $"&symbol={Uri.EscapeDataString(symbol)}";
+        if (!string.IsNullOrEmpty(strategyId)) url += $"&strategyId={Uri.EscapeDataString(strategyId)}";
+        return await http.GetByteArrayAsync(url);
+    }
+
+    public async Task<byte[]> ExportPdfAsync(string? symbol = null, string? strategyId = null)
+    {
+        var url = "/api/trades/export?format=pdf";
+        if (!string.IsNullOrEmpty(symbol)) url += $"&symbol={Uri.EscapeDataString(symbol)}";
+        if (!string.IsNullOrEmpty(strategyId)) url += $"&strategyId={Uri.EscapeDataString(strategyId)}";
+        return await http.GetByteArrayAsync(url);
+    }
 }

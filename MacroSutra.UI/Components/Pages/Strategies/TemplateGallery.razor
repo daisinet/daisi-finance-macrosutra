@@ -32,7 +32,7 @@
                                 <MudChip T="string" Size="Size.Small" Color="Color.Info">@template.Category</MudChip>
                                 <MudText Typo="Typo.body2" Class="mt-2">@template.Description</MudText>
                                 <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
-                                    @template.Conditions.Count condition(s), @template.Actions.Count action(s)
+                                    @template.TriggerGroups.Count trigger group(s)
                                 </MudText>
                             </MudCardContent>
                             <MudCardActions>
@@ -75,7 +75,7 @@
                                     }
                                 </MudStack>
                                 <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
-                                    @strat.Conditions.Count conditions — @strat.Actions.Count actions
+                                    @strat.TriggerGroups.Count trigger group(s)
                                 </MudText>
                             </MudCardContent>
                             <MudCardActions>

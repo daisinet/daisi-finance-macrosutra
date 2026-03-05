@@ -1,4 +1,5 @@
 using System.Text.Json;
+using MacroSutra.Brokers;
 using MacroSutra.Core.Enums;
 using MacroSutra.Core.Models;
 using MacroSutra.Services;
@@ -404,6 +405,196 @@ public static class MacroSutraApiEndpoints
             var accountId = ctx.Items["accountId"] as string;
             await svc.DeleteBacktestAsync(id, accountId!);
             return Results.NoContent();
+        });
+
+        // ── Trade Export ──
+
+        api.MapGet("/trades/export", async (TradeExportService exportSvc, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            string? symbol = ctx.Request.Query["symbol"].FirstOrDefault();
+            string? strategyId = ctx.Request.Query["strategyId"].FirstOrDefault();
+            string format = ctx.Request.Query["format"].FirstOrDefault() ?? "csv";
+
+            if (format == "pdf")
+            {
+                var pdf = await exportSvc.ExportPdfAsync(accountId!, symbol, strategyId);
+                return Results.File(pdf, "application/pdf", "trades.pdf");
+            }
+
+            var csv = await exportSvc.ExportCsvAsync(accountId!, symbol, strategyId);
+            return Results.File(csv, "text/csv", "trades.csv");
+        });
+
+        // ── Historical Market Data ──
+
+        api.MapGet("/market/bars", async (MarketDataService marketSvc, HttpContext ctx) =>
+        {
+            string symbol = ctx.Request.Query["symbol"].FirstOrDefault() ?? "";
+            var from = DateOnly.TryParse(ctx.Request.Query["from"].FirstOrDefault(), out var f) ? f : DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1));
+            var to = DateOnly.TryParse(ctx.Request.Query["to"].FirstOrDefault(), out var t) ? t : DateOnly.FromDateTime(DateTime.UtcNow);
+            var timeFrame = ctx.Request.Query["timeFrame"].FirstOrDefault() ?? "Day";
+            var barTimeFrame = Enum.TryParse<BarTimeFrame>(timeFrame, true, out var tf) ? tf : BarTimeFrame.Day;
+            var bars = await marketSvc.GetHistoricalBarsAsync(symbol, from, to, barTimeFrame);
+            return Results.Ok(bars);
+        });
+
+        // ── DCA Schedules ──
+
+        api.MapGet("/dca", async (DcaService dcaSvc, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            var schedules = await dcaSvc.GetSchedulesAsync(accountId!);
+            return Results.Ok(schedules);
+        });
+
+        api.MapGet("/dca/{id}", async (string id, DcaService dcaSvc, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            var schedule = await dcaSvc.GetScheduleAsync(id, accountId!);
+            return schedule != null ? Results.Ok(schedule) : Results.NotFound();
+        });
+
+        api.MapPost("/dca", async ([FromBody] DcaSchedule schedule, DcaService dcaSvc, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            var userId = ctx.Items["userId"] as string;
+            schedule.AccountId = accountId!;
+            schedule.UserId = userId!;
+            var created = await dcaSvc.CreateScheduleAsync(schedule);
+            return Results.Created($"/api/dca/{created.id}", created);
+        });
+
+        api.MapPut("/dca/{id}", async (string id, [FromBody] DcaSchedule schedule, DcaService dcaSvc, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            schedule.id = id;
+            schedule.AccountId = accountId!;
+            var updated = await dcaSvc.UpdateScheduleAsync(schedule);
+            return Results.Ok(updated);
+        });
+
+        api.MapDelete("/dca/{id}", async (string id, DcaService dcaSvc, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            await dcaSvc.DeleteScheduleAsync(id, accountId!);
+            return Results.NoContent();
+        });
+
+        api.MapPost("/dca/{id}/activate", async (string id, DcaService dcaSvc, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            var schedule = await dcaSvc.GetScheduleAsync(id, accountId!);
+            if (schedule == null) return Results.NotFound();
+            await dcaSvc.ActivateScheduleAsync(schedule);
+            return Results.Ok(schedule);
+        });
+
+        api.MapPost("/dca/{id}/deactivate", async (string id, DcaService dcaSvc, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            var schedule = await dcaSvc.GetScheduleAsync(id, accountId!);
+            if (schedule == null) return Results.NotFound();
+            await dcaSvc.DeactivateScheduleAsync(schedule);
+            return Results.Ok(schedule);
+        });
+
+        // ── Portfolio Rebalancing ──
+
+        api.MapGet("/portfolio/rebalance", async (RebalanceService rebalanceSvc, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            var targets = await rebalanceSvc.GetTargetsAsync(accountId!);
+            return Results.Ok(targets);
+        });
+
+        api.MapGet("/portfolio/rebalance/{id}", async (string id, RebalanceService rebalanceSvc, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            var target = await rebalanceSvc.GetTargetAsync(id, accountId!);
+            return target != null ? Results.Ok(target) : Results.NotFound();
+        });
+
+        api.MapPost("/portfolio/rebalance", async ([FromBody] RebalanceTarget target, RebalanceService rebalanceSvc, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            target.AccountId = accountId!;
+            var created = await rebalanceSvc.CreateTargetAsync(target);
+            return Results.Created($"/api/portfolio/rebalance/{created.id}", created);
+        });
+
+        api.MapPut("/portfolio/rebalance/{id}", async (string id, [FromBody] RebalanceTarget target, RebalanceService rebalanceSvc, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            target.id = id;
+            target.AccountId = accountId!;
+            var updated = await rebalanceSvc.UpdateTargetAsync(target);
+            return Results.Ok(updated);
+        });
+
+        api.MapDelete("/portfolio/rebalance/{id}", async (string id, RebalanceService rebalanceSvc, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            await rebalanceSvc.DeleteTargetAsync(id, accountId!);
+            return Results.NoContent();
+        });
+
+        api.MapGet("/portfolio/rebalance/{id}/analyze", async (string id, RebalanceService rebalanceSvc, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            var analysis = await rebalanceSvc.AnalyzeAsync(id, accountId!);
+            return Results.Ok(analysis);
+        });
+
+        api.MapPost("/portfolio/rebalance/{id}/execute", async (string id, RebalanceService rebalanceSvc, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            var trades = await rebalanceSvc.ExecuteRebalanceAsync(id, accountId!);
+            return Results.Ok(trades);
+        });
+
+        // ── Tax-Loss Harvesting ──
+
+        api.MapGet("/portfolio/tax-loss-harvesting", async (TaxLossHarvestingService tlhSvc, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            string? brokerageAccountId = ctx.Request.Query["brokerageAccountId"].FirstOrDefault();
+            var report = await tlhSvc.AnalyzeAsync(accountId!, brokerageAccountId);
+            return Results.Ok(report);
+        });
+
+        // ── Options ──
+
+        api.MapGet("/options/chain", async (PortfolioService portfolioSvc, BrokerageProviderFactory factory, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            string brokerageAccountId = ctx.Request.Query["brokerageAccountId"].FirstOrDefault() ?? "";
+            string symbol = ctx.Request.Query["symbol"].FirstOrDefault() ?? "";
+            DateOnly? expiration = DateOnly.TryParse(ctx.Request.Query["expiration"].FirstOrDefault(), out var exp) ? exp : null;
+
+            var account = await portfolioSvc.GetBrokerageAccountAsync(brokerageAccountId, accountId!);
+            if (account == null) return Results.NotFound();
+            var provider = factory.GetProvider(account.Provider);
+            var chain = await provider.GetOptionsChainAsync(account.CredentialData, symbol, expiration);
+            return Results.Ok(chain);
+        });
+
+        api.MapPost("/options/orders", async ([FromBody] Trade trade, TradeService tradeSvc, PortfolioService portfolioSvc, BrokerageProviderFactory factory, HttpContext ctx) =>
+        {
+            var accountId = ctx.Items["accountId"] as string;
+            var userId = ctx.Items["userId"] as string;
+            trade.AccountId = accountId!;
+            trade.UserId = userId!;
+            trade = await tradeSvc.RecordTradeAsync(trade);
+
+            var account = await portfolioSvc.GetBrokerageAccountAsync(trade.BrokerageAccountId!, accountId!);
+            if (account == null) return Results.NotFound();
+            var provider = factory.GetProvider(account.Provider);
+            var externalId = await provider.PlaceOptionsOrderAsync(account.CredentialData, trade);
+            trade.ExternalOrderId = externalId;
+            trade.Status = TradeStatus.Submitted;
+            await tradeSvc.UpdateTradeStatusAsync(trade.id, trade.AccountId, TradeStatus.Submitted);
+            return Results.Created($"/api/trades/{trade.id}", trade);
         });
     }
 }

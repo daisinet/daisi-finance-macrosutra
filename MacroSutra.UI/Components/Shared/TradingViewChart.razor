@@ -1,0 +1,86 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject IDataProvider Data
+
+<div id="@chartId" style="height: @(Height)px; width: 100%;"></div>
+
+@code {
+    [Parameter] public string Symbol { get; set; } = "";
+    [Parameter] public string TimeFrame { get; set; } = "Day";
+    [Parameter] public string ChartType { get; set; } = "candlestick";
+    [Parameter] public int Height { get; set; } = 400;
+    [Parameter] public bool DarkMode { get; set; }
+
+    private string chartId = $"tv-chart-{Guid.NewGuid():N}";
+    private bool initialized;
+    private object[]? lastData;
+    private string? lastTimeFrame;
+    private bool hasData;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("TradingViewInterop.createChart", chartId, new { height = Height, darkMode = DarkMode });
+            initialized = true;
+            await LoadDataAsync();
+        }
+    }
+
+    public async Task LoadDataAsync()
+    {
+        if (!initialized || string.IsNullOrEmpty(Symbol)) return;
+
+        // Preserve zoom when switching symbols within the same timeframe
+        var preserveView = hasData && lastTimeFrame == TimeFrame;
+        lastTimeFrame = TimeFrame;
+
+        var now = DateTime.UtcNow;
+        var from = TimeFrame switch
+        {
+            "OneMinute" => DateOnly.FromDateTime(now.AddDays(-1)),
+            "FiveMinutes" => DateOnly.FromDateTime(now.AddDays(-5)),
+            "FifteenMinutes" => DateOnly.FromDateTime(now.AddDays(-10)),
+            "Hour" => DateOnly.FromDateTime(now.AddMonths(-1)),
+            "Week" => DateOnly.FromDateTime(now.AddYears(-3)),
+            "Month" => DateOnly.FromDateTime(now.AddYears(-5)),
+            _ => DateOnly.FromDateTime(now.AddYears(-1)) // Day
+        };
+        var to = DateOnly.FromDateTime(now);
+        var bars = await Data.GetHistoricalBarsAsync(Symbol, from, to, TimeFrame);
+
+        lastData = bars.Select(b => (object)new
+        {
+            time = new DateTimeOffset(b.Timestamp, TimeSpan.Zero).ToUnixTimeSeconds(),
+            open = (double)b.Open,
+            high = (double)b.High,
+            low = (double)b.Low,
+            close = (double)b.Close
+        }).ToArray();
+
+        hasData = lastData.Length > 0;
+        await SetSeriesDataAsync(preserveView);
+    }
+
+    public async Task RedrawAsync()
+    {
+        if (!initialized || lastData == null) return;
+        await SetSeriesDataAsync(true);
+    }
+
+    private async Task SetSeriesDataAsync(bool preserveView = false)
+    {
+        if (lastData == null) return;
+        var jsMethod = ChartType == "line"
+            ? "TradingViewInterop.setLineData"
+            : "TradingViewInterop.setCandlestickData";
+        await JS.InvokeVoidAsync(jsMethod, chartId, lastData, preserveView);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (!initialized) return;
+        try { await JS.InvokeVoidAsync("TradingViewInterop.destroyChart", chartId); }
+        catch (JSDisconnectedException) { }
+    }
+}

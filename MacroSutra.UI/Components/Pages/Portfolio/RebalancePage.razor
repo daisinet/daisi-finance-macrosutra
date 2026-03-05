@@ -1,0 +1,187 @@
+@page "/rebalance"
+
+<PageTitle>Portfolio Rebalancing — MacroSutra</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Portfolio Rebalancing</MudText>
+
+<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => showCreate = true)" Class="mb-4">
+    <MudIcon Icon="@Icons.Material.Filled.Add" Class="me-1" /> New Target
+</MudButton>
+
+<MudTable Items="@targets" Hover="true" Striped="true" Dense="true" Loading="@loading">
+    <HeaderContent>
+        <MudTh>Name</MudTh>
+        <MudTh>Allocations</MudTh>
+        <MudTh>Drift Threshold</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh>Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.Name</MudTd>
+        <MudTd>
+            @foreach (var a in context.Allocations)
+            {
+                <MudChip T="string" Size="Size.Small">@a.Symbol @a.TargetPercent%</MudChip>
+            }
+        </MudTd>
+        <MudTd>@context.DriftThresholdPercent%</MudTd>
+        <MudTd>
+            <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">
+                @(context.IsActive ? "Active" : "Inactive")
+            </MudChip>
+        </MudTd>
+        <MudTd>
+            <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Primary" OnClick="@(() => AnalyzeTarget(context))">
+                Analyze
+            </MudButton>
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                           OnClick="@(() => DeleteTarget(context))" />
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+@if (analysis != null)
+{
+    <MudPaper Class="pa-4 mt-4" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-2">Drift Analysis</MudText>
+        <MudText>Portfolio Value: @analysis.TotalPortfolioValue.ToString("C")</MudText>
+        <MudText>Needs Rebalancing: <strong>@(analysis.NeedsRebalancing ? "Yes" : "No")</strong></MudText>
+
+        <MudTable Items="@analysis.Drifts" Hover="true" Striped="true" Dense="true" Class="mt-2">
+            <HeaderContent>
+                <MudTh>Symbol</MudTh>
+                <MudTh>Target %</MudTh>
+                <MudTh>Actual %</MudTh>
+                <MudTh>Drift %</MudTh>
+                <MudTh>Suggested Trade</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd><strong>@context.Symbol</strong></MudTd>
+                <MudTd>@context.TargetPercent.ToString("N1")%</MudTd>
+                <MudTd>@context.ActualPercent.ToString("N1")%</MudTd>
+                <MudTd>
+                    <MudText Color="@(context.DriftPercent > 0 ? Color.Success : context.DriftPercent < 0 ? Color.Error : Color.Default)">
+                        @context.DriftPercent.ToString("+0.0;-0.0;0.0")%
+                    </MudText>
+                </MudTd>
+                <MudTd>@context.SuggestedTradeValue.ToString("C")</MudTd>
+            </RowTemplate>
+        </MudTable>
+
+        @if (analysis.NeedsRebalancing)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Warning" Class="mt-3" OnClick="ExecuteRebalance">
+                Execute Rebalance
+            </MudButton>
+        }
+    </MudPaper>
+}
+
+<MudDialog @bind-Visible="showCreate">
+    <TitleContent>New Rebalance Target</TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="newTarget.Name" Label="Name" Required="true" Class="mb-3" />
+        <MudSelect @bind-Value="newTarget.BrokerageAccountId" Label="Brokerage Account" Class="mb-3">
+            @foreach (var a in brokerageAccounts)
+            {
+                <MudSelectItem Value="@a.id">@a.Name (@a.Provider)</MudSelectItem>
+            }
+        </MudSelect>
+        <MudNumericField @bind-Value="newTarget.DriftThresholdPercent" Label="Drift Threshold (%)" Min="1" Max="50" Class="mb-3" />
+
+        <MudText Typo="Typo.subtitle1" Class="mb-2">Allocations</MudText>
+        @for (int i = 0; i < newAllocations.Count; i++)
+        {
+            var idx = i;
+            <MudGrid>
+                <MudItem xs="5"><MudTextField @bind-Value="newAllocations[idx].Symbol" Label="Symbol" /></MudItem>
+                <MudItem xs="5"><MudNumericField @bind-Value="newAllocations[idx].TargetPercent" Label="%" Min="0" Max="100" /></MudItem>
+                <MudItem xs="2" Class="d-flex align-end">
+                    <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="@(() => newAllocations.RemoveAt(idx))" />
+                </MudItem>
+            </MudGrid>
+        }
+        <MudButton Size="Size.Small" OnClick="@(() => newAllocations.Add(new AllocationTarget()))">+ Add Allocation</MudButton>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => showCreate = false)">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateTarget">Create</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
+    [Inject] private IDataProvider Data { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+
+    private List<RebalanceTarget> targets = new();
+    private List<BrokerageAccount> brokerageAccounts = new();
+    private RebalanceAnalysis? analysis;
+    private string? analyzedTargetId;
+    private bool loading = true;
+    private bool showCreate;
+    private RebalanceTarget newTarget = new();
+    private List<AllocationTarget> newAllocations = new() { new(), new() };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(AccountId)) return;
+        loading = true;
+        try
+        {
+            targets = await Data.GetRebalanceTargetsAsync(AccountId);
+            brokerageAccounts = await Data.GetBrokerageAccountsAsync(AccountId, activeOnly: true);
+        }
+        catch { }
+        finally { loading = false; }
+    }
+
+    private async Task CreateTarget()
+    {
+        try
+        {
+            newTarget.AccountId = AccountId;
+            newTarget.Allocations = newAllocations.Where(a => !string.IsNullOrWhiteSpace(a.Symbol)).ToList();
+            await Data.CreateRebalanceTargetAsync(newTarget);
+            Snackbar.Add("Rebalance target created.", Severity.Success);
+            showCreate = false;
+            newTarget = new();
+            newAllocations = new() { new(), new() };
+            targets = await Data.GetRebalanceTargetsAsync(AccountId);
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task AnalyzeTarget(RebalanceTarget target)
+    {
+        try
+        {
+            analysis = await Data.AnalyzeRebalanceAsync(target.id, AccountId);
+            analyzedTargetId = target.id;
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task ExecuteRebalance()
+    {
+        if (analyzedTargetId == null) return;
+        try
+        {
+            var trades = await Data.ExecuteRebalanceAsync(analyzedTargetId, AccountId);
+            Snackbar.Add($"Placed {trades.Count} rebalancing order(s).", Severity.Success);
+            analysis = null;
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task DeleteTarget(RebalanceTarget target)
+    {
+        try
+        {
+            await Data.DeleteRebalanceTargetAsync(target.id, AccountId);
+            targets = await Data.GetRebalanceTargetsAsync(AccountId);
+            Snackbar.Add("Target deleted.", Severity.Info);
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+}

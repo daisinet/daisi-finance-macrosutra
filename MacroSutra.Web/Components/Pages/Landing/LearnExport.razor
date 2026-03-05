@@ -1,0 +1,52 @@
+@page "/learn/export"
+@layout MacroSutra.Web.Components.Layout.LandingLayout
+
+<PageTitle>MacroSutra - Trade Export Guide</PageTitle>
+
+<section class="landing-section">
+    <div class="landing-container">
+        <h1>Trade Export</h1>
+        <p>Export your trade history to CSV or PDF for record-keeping, tax preparation, or offline analysis.</p>
+
+        <h2 id="csv" class="mt-4">CSV Export</h2>
+        <p>CSV exports include the following columns for every trade in your account:</p>
+        <ul>
+            <li><strong>Date</strong> &mdash; Trade creation timestamp (UTC).</li>
+            <li><strong>Symbol</strong> &mdash; The ticker symbol traded.</li>
+            <li><strong>Side</strong> &mdash; Buy or Sell.</li>
+            <li><strong>Type</strong> &mdash; Order type (Market, Limit, Stop, etc.).</li>
+            <li><strong>Qty</strong> &mdash; Requested quantity.</li>
+            <li><strong>FilledQty</strong> &mdash; Quantity actually filled.</li>
+            <li><strong>FilledPrice</strong> &mdash; Average fill price.</li>
+            <li><strong>Status</strong> &mdash; Current order status (Filled, Submitted, Cancelled, etc.).</li>
+            <li><strong>StrategyId</strong> &mdash; The strategy that triggered the trade, if any.</li>
+            <li><strong>Notes</strong> &mdash; Any notes or alert text associated with the trade.</li>
+        </ul>
+        <p>To export from the UI, navigate to <strong>Trading &rarr; Trades</strong> and click <strong>Export CSV</strong>. The file downloads immediately to your browser.</p>
+
+        <h3 class="mt-3">SDK Export</h3>
+<pre><code>var csvBytes = await client.Trades.ExportCsvAsync();
+File.WriteAllBytes("trades.csv", csvBytes);</code></pre>
+
+        <h2 id="pdf" class="mt-4">PDF Export</h2>
+        <p>PDF exports generate a formatted trade report with:</p>
+        <ul>
+            <li>A header with report title and generation timestamp.</li>
+            <li>A table of all trades with Date, Symbol, Side, Type, Qty, Filled Price, and Status columns.</li>
+            <li>Page numbers in the footer.</li>
+        </ul>
+        <p>Click <strong>Export PDF</strong> on the Trades page to download. The PDF uses landscape A4 format for readability.</p>
+
+        <h3 class="mt-3">SDK Export</h3>
+<pre><code>var pdfBytes = await client.Trades.ExportPdfAsync();
+File.WriteAllBytes("trades.pdf", pdfBytes);</code></pre>
+
+        <h2 id="api" class="mt-4">API Endpoint</h2>
+        <p>Both formats are available via a single endpoint:</p>
+<pre><code>GET /api/trades/export?format=csv
+GET /api/trades/export?format=pdf</code></pre>
+        <p>Optional query parameters: <code>symbol</code> and <code>strategyId</code> to filter the exported trades.</p>
+
+        <p class="mt-4"><a href="/learn">&larr; Back to Learn</a></p>
+    </div>
+</section>

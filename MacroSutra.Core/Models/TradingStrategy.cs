@@ -21,16 +21,11 @@ public class TradingStrategy
     /// </summary>
     public List<string> Symbols { get; set; } = new();
 
-    public LogicGroupType LogicGroup { get; set; } = LogicGroupType.And;
-    public List<TriggerCondition> Conditions { get; set; } = new();
-    public List<TradeAction> Actions { get; set; } = new();
-
     /// <summary>
-    /// Optional nested condition group for compound logic.
-    /// When non-null, evaluation uses recursive group logic instead of flat Conditions + LogicGroup.
-    /// Nullable for backward compatibility with existing Cosmos documents.
+    /// Named trigger groups, each with its own conditions and actions.
+    /// Each group evaluates independently — when its conditions are met, its actions fire.
     /// </summary>
-    public ConditionGroup? RootConditionGroup { get; set; }
+    public List<TriggerGroup> TriggerGroups { get; set; } = new();
     public SizingMode SizingMode { get; set; } = SizingMode.Fixed;
 
     /// <summary>

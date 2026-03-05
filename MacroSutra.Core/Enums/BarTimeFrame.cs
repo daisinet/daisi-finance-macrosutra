@@ -9,5 +9,7 @@ public enum BarTimeFrame
     Hour = 1,
     FifteenMinutes = 2,
     FiveMinutes = 3,
-    OneMinute = 4
+    OneMinute = 4,
+    Week = 5,
+    Month = 6
 }

@@ -1,0 +1,122 @@
+@page "/charts"
+
+<PageTitle>Charts — MacroSutra</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Advanced Charts</MudText>
+
+<MudStack Row="true" AlignItems="AlignItems.End" Spacing="3" Class="mb-3 flex-wrap">
+    <MudTextField @bind-Value="symbol" Label="Symbol" Placeholder="AAPL" Immediate="true" Style="max-width:200px"
+                  Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
+                  OnAdornmentClick="LoadChart" OnKeyDown="OnSymbolKeyDown" />
+
+    <MudToggleGroup T="string" Value="@timeFrame" ValueChanged="OnTimeFrameChanged"
+                    Color="Color.Primary" Size="Size.Small" SelectionMode="SelectionMode.SingleSelection">
+        <MudToggleItem Value="@("OneMinute")" Text="1m" />
+        <MudToggleItem Value="@("FiveMinutes")" Text="5m" />
+        <MudToggleItem Value="@("FifteenMinutes")" Text="15m" />
+        <MudToggleItem Value="@("Hour")" Text="H" />
+        <MudToggleItem Value="@("Day")" Text="D" />
+        <MudToggleItem Value="@("Week")" Text="W" />
+        <MudToggleItem Value="@("Month")" Text="M" />
+    </MudToggleGroup>
+
+    <MudToggleGroup T="string" Value="@chartType" ValueChanged="OnChartTypeChanged"
+                    Color="Color.Secondary" Size="Size.Small" SelectionMode="SelectionMode.SingleSelection">
+        <MudToggleItem Value="@("candlestick")" Text="Candles" />
+        <MudToggleItem Value="@("line")" Text="Line" />
+    </MudToggleGroup>
+</MudStack>
+
+<MudGrid>
+    <MudItem xs="12" md="9">
+        @if (!string.IsNullOrEmpty(activeSymbol))
+        {
+            <MudPaper Class="pa-2" Elevation="1">
+                <TradingViewChart @ref="chartRef" Symbol="@activeSymbol" TimeFrame="@timeFrame" ChartType="@chartType" Height="500" />
+            </MudPaper>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Info" Class="mt-4">
+                Enter a symbol and click "Load Chart" to view candlestick data.
+            </MudAlert>
+        }
+    </MudItem>
+    <MudItem xs="12" md="3">
+        <MudPaper Class="pa-3" Elevation="1">
+            <MudText Typo="Typo.subtitle1" Class="mb-2">Recent</MudText>
+            @if (recentSymbols.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Tertiary">No recent symbols</MudText>
+            }
+            else
+            {
+                <MudList T="string" Dense="true">
+                    @foreach (var s in recentSymbols)
+                    {
+                        <MudListItem T="string" OnClick="() => LoadSymbol(s)">
+                            <MudText Typo="Typo.body2" Style="font-weight:600">@s</MudText>
+                        </MudListItem>
+                    }
+                </MudList>
+            }
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    private string symbol = "";
+    private string timeFrame = "Day";
+    private string chartType = "candlestick";
+    private string? activeSymbol;
+    private TradingViewChart? chartRef;
+    private List<string> recentSymbols = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var symbols = await JS.InvokeAsync<string[]>("RecentSymbols.get");
+            recentSymbols = symbols?.ToList() ?? new();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadChart()
+    {
+        if (string.IsNullOrWhiteSpace(symbol)) return;
+        activeSymbol = symbol.Trim().ToUpperInvariant();
+        recentSymbols = (await JS.InvokeAsync<string[]>("RecentSymbols.add", activeSymbol))?.ToList() ?? recentSymbols;
+        StateHasChanged();
+        await Task.Delay(100);
+        if (chartRef != null)
+            await chartRef.LoadDataAsync();
+    }
+
+    private async Task LoadSymbol(string s)
+    {
+        symbol = s;
+        await LoadChart();
+    }
+
+    private async Task OnSymbolKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await LoadChart();
+    }
+
+    private async Task OnTimeFrameChanged(string value)
+    {
+        timeFrame = value;
+        if (chartRef != null) await chartRef.LoadDataAsync();
+    }
+
+    private async Task OnChartTypeChanged(string value)
+    {
+        chartType = value;
+        StateHasChanged();
+        await Task.Yield();
+        if (chartRef != null) await chartRef.RedrawAsync();
+    }
+}

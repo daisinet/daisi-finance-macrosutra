@@ -284,12 +284,23 @@ Completed the gaps left in Phases 2–6.
 - [x] Learn page — Visual Strategy Builder guide at `/learn/strategy-builder`
 - [x] Test coverage — 17 tests across ConditionWizardHelperTests and DragPayloadTests
 
-### Phase 12: Advanced Trading Features
+### Phase 12: Advanced Trading Features ✅
 
-- [ ] Multi-leg options support (spreads, straddles, iron condors)
-- [ ] Fractional share support where brokerage allows
-- [ ] Dollar-cost averaging automation
-- [ ] Portfolio rebalancing triggers
-- [ ] Tax-loss harvesting suggestions
-- [ ] Advanced charting with TradingView integration
-- [ ] Export trades to CSV/PDF for tax reporting
+- [x] Fractional share awareness flag — `SupportsFractionalShares` per broker, automatic rounding to whole shares for non-supporting providers
+- [x] Export trades to CSV — standard columns (Date, Symbol, Side, Type, Qty, FilledQty, FilledPrice, Status, StrategyId, Notes) via API and UI
+- [x] Export trades to PDF — formatted QuestPDF reports with header, summary, trade table, and pagination
+- [x] Advanced charting — TradingView Lightweight Charts v5 integration with candlestick/line modes, daily/weekly/monthly timeframes, JS interop
+- [x] Dollar-cost averaging automation — DcaSchedule model, DcaService with Daily/Weekly/BiWeekly/Monthly scheduling, DcaExecutionService BackgroundService
+- [x] Portfolio rebalancing triggers — RebalanceTarget with allocation targets, drift analysis, automated buy/sell order execution
+- [x] Tax-loss harvesting suggestions — read-only analysis scanning positions for unrealized losses, 30-day wash sale window, 20% estimated tax rate
+- [x] Single-leg options support (V1) — buy calls/puts, sell covered calls/cash-secured puts through Alpaca and Tastytrade; options chain viewer with calls/puts table
+- [x] Learn pages — 6 new guides: Trade Export, Advanced Charting, DCA, Portfolio Rebalancing, Tax-Loss Harvesting, Options Trading
+- [x] Test coverage — 60 new tests (484 total)
+
+### Phase 13: Future
+
+- [ ] Multi-leg options (spreads, iron condors, strangles)
+- [ ] Options strategy automation (trigger-based options orders)
+- [ ] Real-time options Greeks streaming
+- [ ] Intraday charting with WebSocket data
+- [ ] Advanced DCA with price-based conditions

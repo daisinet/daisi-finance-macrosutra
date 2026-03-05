@@ -2,6 +2,7 @@ using System.Text.Json;
 using Alpaca.Markets;
 using MacroSutra.Core.Enums;
 using MacroSutra.Core.Models;
+using MacroSutra.Core.Models.Options;
 
 namespace MacroSutra.Brokers;
 
@@ -11,6 +12,9 @@ namespace MacroSutra.Brokers;
 /// </summary>
 public class AlpacaBrokerageProvider : IBrokerageProvider
 {
+    public bool SupportsFractionalShares => true;
+    public bool SupportsOptions => true;
+
     public async Task<bool> ValidateCredentialsAsync(string credentialRef)
     {
         try
@@ -118,6 +122,51 @@ public class AlpacaBrokerageProvider : IBrokerageProvider
             OrderStatus.Held => TradeStatus.Submitted,
             _ => TradeStatus.Pending
         };
+    }
+
+    public async Task<OptionsChain> GetOptionsChainAsync(string credentialRef, string underlyingSymbol, DateOnly? expiration = null)
+    {
+        var (creds, isPaper) = ParseCredentials(credentialRef);
+        using var client = CreateClient(creds, isPaper);
+
+        // Alpaca options chain retrieval (simplified — actual Alpaca SDK may differ)
+        // Return a placeholder chain structure; in production, call Alpaca's options API
+        var chain = new OptionsChain
+        {
+            UnderlyingSymbol = underlyingSymbol,
+            UnderlyingPrice = 0
+        };
+
+        try
+        {
+            // Get underlying price
+            using var dataClient = (isPaper ? Environments.Paper : Environments.Live)
+                .GetAlpacaTradingClient(new SecretKey(creds.ApiKey, creds.SecretKey));
+            // Options chain would be fetched via Alpaca's options-specific API endpoints
+            // This is a stub for V1 — full implementation requires Alpaca Options API access
+        }
+        catch { }
+
+        return chain;
+    }
+
+    public async Task<string> PlaceOptionsOrderAsync(string credentialRef, Trade trade)
+    {
+        var (creds, isPaper) = ParseCredentials(credentialRef);
+        using var client = CreateClient(creds, isPaper);
+
+        // For V1, options orders go through the same order API with the options contract symbol
+        var side = trade.Side == TradeSide.Buy ? OrderSide.Buy : OrderSide.Sell;
+        var contractSymbol = trade.OptionDetails?.ContractSymbol ?? trade.Symbol;
+        var quantity = trade.OptionDetails?.Contracts ?? (int)trade.Quantity;
+
+        IOrder order;
+        if (trade.LimitPrice.HasValue)
+            order = await client.PostOrderAsync(side.Limit(contractSymbol, quantity, trade.LimitPrice.Value));
+        else
+            order = await client.PostOrderAsync(side.Market(contractSymbol, quantity));
+
+        return order.OrderId.ToString();
     }
 
     internal static (AlpacaCredentials creds, bool isPaper) ParseCredentials(string credentialRef)

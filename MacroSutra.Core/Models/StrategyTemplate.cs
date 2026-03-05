@@ -1,5 +1,3 @@
-using MacroSutra.Core.Enums;
-
 namespace MacroSutra.Core.Models;
 
 /// <summary>
@@ -12,7 +10,5 @@ public class StrategyTemplate
     public string Name { get; set; } = "";
     public string Description { get; set; } = "";
     public string Category { get; set; } = "";
-    public LogicGroupType LogicGroup { get; set; } = LogicGroupType.And;
-    public List<TriggerCondition> Conditions { get; set; } = new();
-    public List<TradeAction> Actions { get; set; } = new();
+    public List<TriggerGroup> TriggerGroups { get; set; } = new();
 }

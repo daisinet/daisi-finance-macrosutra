@@ -37,14 +37,18 @@ public class WalkForwardServiceTests
         AccountId = "acc-1",
         Name = "Never Triggers",
         Symbols = new List<string> { "SPY" },
-        LogicGroup = LogicGroupType.And,
-        Conditions = new List<TriggerCondition>
+        TriggerGroups = new()
         {
-            new() { ConditionId = "c1", ConditionType = ConditionType.Price, Operator = ConditionOperator.GreaterThan, Value = 999_999 }
-        },
-        Actions = new List<TradeAction>
-        {
-            new() { ActionId = "a1", Side = TradeSide.Buy, ActionType = TradeActionType.MarketOrder, QuantityType = QuantityType.Shares, Quantity = 10 }
+            new TriggerGroup
+            {
+                Name = "Test",
+                Conditions = new ConditionGroup
+                {
+                    Logic = LogicGroupType.And,
+                    Conditions = new() { new() { ConditionId = "c1", ConditionType = ConditionType.Price, Operator = ConditionOperator.GreaterThan, Value = 999_999 } }
+                },
+                Actions = new() { new() { ActionId = "a1", Side = TradeSide.Buy, ActionType = TradeActionType.MarketOrder, QuantityType = QuantityType.Shares, Quantity = 10 } }
+            }
         }
     };
 
@@ -59,14 +63,18 @@ public class WalkForwardServiceTests
         AccountId = "acc-1",
         Name = "Buy Only",
         Symbols = new List<string> { "SPY" },
-        LogicGroup = LogicGroupType.And,
-        Conditions = new List<TriggerCondition>
+        TriggerGroups = new()
         {
-            new() { ConditionId = "c1", ConditionType = ConditionType.Price, Operator = ConditionOperator.GreaterThan, Value = 0 }
-        },
-        Actions = new List<TradeAction>
-        {
-            new() { ActionId = "a1", Side = TradeSide.Buy, ActionType = TradeActionType.MarketOrder, QuantityType = QuantityType.Shares, Quantity = 10 }
+            new TriggerGroup
+            {
+                Name = "Test",
+                Conditions = new ConditionGroup
+                {
+                    Logic = LogicGroupType.And,
+                    Conditions = new() { new() { ConditionId = "c1", ConditionType = ConditionType.Price, Operator = ConditionOperator.GreaterThan, Value = 0 } }
+                },
+                Actions = new() { new() { ActionId = "a1", Side = TradeSide.Buy, ActionType = TradeActionType.MarketOrder, QuantityType = QuantityType.Shares, Quantity = 10 } }
+            }
         }
     };
 

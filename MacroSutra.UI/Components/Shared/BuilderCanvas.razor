@@ -1,74 +1,120 @@
-@* Center panel: drop target canvas with conditions + actions zones *@
+@* Center panel: trigger groups as tabs *@
 
-<div class="builder-canvas pa-3">
-    @* Conditions Zone *@
-    <MudText Typo="Typo.h6" Class="mb-2">
-        <MudIcon Icon="@Icons.Material.Filled.FilterAlt" Size="Size.Small" Class="me-1" /> Conditions
-    </MudText>
-
-    <CanvasConditionGroup Group="RootGroup"
-                          Depth="0"
-                          LiveResults="LiveResults"
-                          DragPayload="DragPayload"
-                          DragPayloadChanged="DragPayloadChanged"
-                          EditCondition="EditCondition" />
-
-    <MudDivider Class="my-4" />
-
-    @* Actions Zone *@
-    <MudText Typo="Typo.h6" Class="mb-2">
-        <MudIcon Icon="@Icons.Material.Filled.FlashOn" Size="Size.Small" Class="me-1" /> Actions
-    </MudText>
-
-    <div class="canvas-drop-zone @(isActionDragOver ? "drag-over" : "")"
-         @ondrop="HandleActionDrop" @ondragover="HandleActionDragOver" @ondragover:preventDefault
-         @ondragleave="HandleActionDragLeave">
-        @if (Actions.Count == 0)
+<div class="builder-canvas">
+    <MudTabs Rounded="true" ApplyEffectsToContainer="true" Class="builder-tabs"
+             ActivePanelIndex="activePanelIndex" ActivePanelIndexChanged="OnTabChanged"
+             PanelClass="pa-3">
+        @foreach (var (group, index) in TriggerGroups.Select((g, i) => (g, i)))
         {
-            <div class="empty-zone py-4 text-center">
-                <MudText Typo="Typo.caption" Color="Color.Secondary">
-                    Drop actions here or click "Add Action" below
+            <MudTabPanel Text="@group.Name" Icon="@Icons.Material.Filled.Bolt" ID="@group.GroupId">
+                <div class="d-flex align-center mb-3 gap-3">
+                    <MudTextField @bind-Value="group.Name" Label="Group Name" Variant="Variant.Outlined"
+                                  Style="max-width:250px;" Dense="true" Immediate="true" />
+                    <MudSelect T="BarTimeFrame" @bind-Value="group.Interval" Label="Interval" Variant="Variant.Outlined"
+                               Dense="true" Style="max-width:180px;">
+                        <MudSelectItem Value="BarTimeFrame.OneMinute">1 Minute</MudSelectItem>
+                        <MudSelectItem Value="BarTimeFrame.FiveMinutes">5 Minutes</MudSelectItem>
+                        <MudSelectItem Value="BarTimeFrame.FifteenMinutes">15 Minutes</MudSelectItem>
+                        <MudSelectItem Value="BarTimeFrame.Hour">Hourly</MudSelectItem>
+                        <MudSelectItem Value="BarTimeFrame.Day">Daily</MudSelectItem>
+                        <MudSelectItem Value="BarTimeFrame.Week">Weekly</MudSelectItem>
+                        <MudSelectItem Value="BarTimeFrame.Month">Monthly</MudSelectItem>
+                    </MudSelect>
+                    <MudSpacer />
+                    @if (TriggerGroups.Count > 1)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                       OnClick="@(() => RemoveTriggerGroup(group))" />
+                    }
+                </div>
+
+                @* Conditions Zone *@
+                <MudText Typo="Typo.subtitle2" Class="mb-1">
+                    <MudIcon Icon="@Icons.Material.Filled.FilterAlt" Size="Size.Small" Class="me-1" /> Conditions
                 </MudText>
-            </div>
-        }
-        else
-        {
-            @foreach (var action in Actions)
-            {
-                <CanvasActionCard Action="action" OnRemove="@(() => Actions.Remove(action))" />
-            }
-        }
-    </div>
+                <CanvasConditionGroup Group="group.Conditions"
+                                      Depth="0"
+                                      LiveResults="@(LiveResults?.Where(r => r.TriggerGroupName == group.Name || r.TriggerGroupName == null).ToList())"
+                                      DragPayload="DragPayload"
+                                      DragPayloadChanged="DragPayloadChanged"
+                                      EditCondition="EditCondition" />
 
-    <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="AddAction" Size="Size.Small" Class="mt-2">
-        <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" /> Add Action
+                <MudDivider Class="my-3" />
+
+                @* Actions Zone *@
+                <MudText Typo="Typo.subtitle2" Class="mb-1">
+                    <MudIcon Icon="@Icons.Material.Filled.FlashOn" Size="Size.Small" Class="me-1" /> Actions
+                </MudText>
+
+                <div class="canvas-drop-zone @(actionDragOverIndex == index ? "drag-over" : "")"
+                     @ondrop="@(() => HandleActionDrop(group))"
+                     @ondragover="@(() => actionDragOverIndex = index)" @ondragover:preventDefault
+                     @ondragleave="@(() => { if (actionDragOverIndex == index) actionDragOverIndex = -1; })">
+                    @if (group.Actions.Count == 0)
+                    {
+                        <div class="empty-zone py-4 text-center">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                Drop actions here or click "Add Action" below
+                            </MudText>
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var action in group.Actions)
+                        {
+                            <CanvasActionCard Action="action" OnRemove="@(() => group.Actions.Remove(action))" />
+                        }
+                    }
+                </div>
+
+                <MudButton Variant="Variant.Text" Color="Color.Primary"
+                           OnClick="@(() => group.Actions.Add(new TradeAction()))" Size="Size.Small" Class="mt-2">
+                    <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" /> Add Action
+                </MudButton>
+            </MudTabPanel>
+        }
+    </MudTabs>
+
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddTriggerGroup" Class="mt-2" FullWidth="true">
+        <MudIcon Icon="@Icons.Material.Filled.Add" Class="me-1" /> Add Trigger Group
     </MudButton>
 </div>
 
 @code {
-    [Parameter] public ConditionGroup RootGroup { get; set; } = new();
-    [Parameter] public List<TradeAction> Actions { get; set; } = new();
+    [Parameter] public List<TriggerGroup> TriggerGroups { get; set; } = new();
     [Parameter] public List<ConditionResult>? LiveResults { get; set; }
     [Parameter] public string? DragPayload { get; set; }
     [Parameter] public EventCallback<string> DragPayloadChanged { get; set; }
     [Parameter] public EventCallback<TriggerCondition> EditCondition { get; set; }
 
-    private bool isActionDragOver;
+    private int activePanelIndex;
+    private int actionDragOverIndex = -1;
 
-    private void AddAction() => Actions.Add(new TradeAction());
+    private void OnTabChanged(int index) => activePanelIndex = index;
 
-    private void HandleActionDragOver() => isActionDragOver = true;
-    private void HandleActionDragLeave() => isActionDragOver = false;
-
-    private void HandleActionDrop()
+    private void AddTriggerGroup()
     {
-        isActionDragOver = false;
+        TriggerGroups.Add(new TriggerGroup { Name = $"Trigger {TriggerGroups.Count + 1}" });
+        activePanelIndex = TriggerGroups.Count - 1;
+    }
+
+    private void RemoveTriggerGroup(TriggerGroup group)
+    {
+        var index = TriggerGroups.IndexOf(group);
+        TriggerGroups.Remove(group);
+        if (activePanelIndex >= TriggerGroups.Count)
+            activePanelIndex = Math.Max(0, TriggerGroups.Count - 1);
+    }
+
+    private void HandleActionDrop(TriggerGroup group)
+    {
+        actionDragOverIndex = -1;
         if (string.IsNullOrEmpty(DragPayload)) return;
 
         var (kind, value) = ConditionWizardHelper.ParseDragPayload(DragPayload);
         if (kind == "action" && Enum.TryParse<TradeActionType>(value, out var actionType))
         {
-            Actions.Add(new TradeAction { ActionType = actionType });
+            group.Actions.Add(new TradeAction { ActionType = actionType });
         }
     }
 }

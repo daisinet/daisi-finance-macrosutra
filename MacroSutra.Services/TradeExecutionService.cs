@@ -21,11 +21,19 @@ public class TradeExecutionService(
     /// Executes all actions for a triggered strategy against a specific symbol.
     /// </summary>
     public virtual async Task<List<Trade>> ExecuteActionsAsync(
-        TradingStrategy strategy, string symbol, MarketSnapshot snapshot)
+        TradingStrategy strategy, string symbol, MarketSnapshot snapshot) =>
+        await ExecuteActionsAsync(strategy, symbol, snapshot, strategy.TriggerGroups.SelectMany(tg => tg.Actions).ToList());
+
+    /// <summary>
+    /// Executes a specific list of actions for a triggered strategy against a specific symbol.
+    /// Used by trigger groups where each group has its own actions.
+    /// </summary>
+    public virtual async Task<List<Trade>> ExecuteActionsAsync(
+        TradingStrategy strategy, string symbol, MarketSnapshot snapshot, List<TradeAction> actions)
     {
         var trades = new List<Trade>();
 
-        foreach (var action in strategy.Actions)
+        foreach (var action in actions)
         {
             try
             {
@@ -109,6 +117,10 @@ public class TradeExecutionService(
         var balance = brokerageAccount.CachedBalance ?? await provider.GetAccountBalanceAsync(brokerageAccount.CredentialData);
         var quantity = ResolveQuantity(action, snapshot.Price, balance);
 
+        // Round to whole shares if provider doesn't support fractional
+        if (!provider.SupportsFractionalShares)
+            quantity = Math.Floor(quantity);
+
         if (quantity <= 0)
         {
             logger.LogWarning("Resolved quantity is 0 for action {ActionId} on {Symbol}", action.ActionId, symbol);
@@ -133,10 +145,18 @@ public class TradeExecutionService(
 
         trade = await tradeService.RecordTradeAsync(trade);
 
-        // Place the order
+        // Place the order — route options orders to the options method
         try
         {
-            var externalOrderId = await provider.PlaceOrderAsync(brokerageAccount.CredentialData, trade);
+            var isOptionsOrder = action.ActionType is TradeActionType.BuyCall or TradeActionType.BuyPut
+                or TradeActionType.SellCall or TradeActionType.SellPut;
+
+            string externalOrderId;
+            if (isOptionsOrder)
+                externalOrderId = await provider.PlaceOptionsOrderAsync(brokerageAccount.CredentialData, trade);
+            else
+                externalOrderId = await provider.PlaceOrderAsync(brokerageAccount.CredentialData, trade);
+
             trade.ExternalOrderId = externalOrderId;
             trade.Status = TradeStatus.Submitted;
             await tradeService.UpdateTradeStatusAsync(trade.id, trade.AccountId, TradeStatus.Submitted);

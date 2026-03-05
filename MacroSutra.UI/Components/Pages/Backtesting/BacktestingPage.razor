@@ -13,7 +13,8 @@
 </MudButton>
 
 <MudTable Items="@backtests" Hover="true" Striped="true" Dense="true" Loading="@loading" T="BacktestResult"
-          OnRowClick="@(args => Nav.NavigateTo($"/backtests/{args.Item.id}"))">
+          OnRowClick="@(args => Nav.NavigateTo($"/backtests/{args.Item.id}"))"
+          RowStyle="cursor: pointer;">
     <HeaderContent>
         <MudTh Style="width:40px;"></MudTh>
         <MudTh>Strategy</MudTh>
@@ -51,9 +52,11 @@
             <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.Status)">@context.Status</MudChip>
         </MudTd>
         <MudTd><MudText Typo="Typo.caption">@context.CreatedUtc.ToString("MMM dd, HH:mm")</MudText></MudTd>
-        <MudTd>
+        <MudTd @onclick:stopPropagation="true">
+            <MudIconButton Icon="@Icons.Material.Filled.Visibility" Href="@($"/backtests/{context.id}")"
+                           Size="Size.Small" Color="Color.Primary" Title="View" />
             <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteBacktest(context))"
-                           OnClick:stopPropagation="true" Size="Size.Small" Color="Color.Error" />
+                           Size="Size.Small" Color="Color.Error" Title="Delete" />
         </MudTd>
     </RowTemplate>
 </MudTable>

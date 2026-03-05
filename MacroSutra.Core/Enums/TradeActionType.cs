@@ -9,5 +9,9 @@ public enum TradeActionType
     LimitOrder = 1,
     StopOrder = 2,
     StopLimitOrder = 3,
-    Alert = 4
+    Alert = 4,
+    BuyCall = 5,
+    BuyPut = 6,
+    SellCall = 7,
+    SellPut = 8
 }

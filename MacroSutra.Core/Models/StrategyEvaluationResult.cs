@@ -24,4 +24,9 @@ public class ConditionResult
     public decimal TargetValue { get; set; }
     public ConditionOperator Operator { get; set; }
     public bool Passed { get; set; }
+
+    /// <summary>
+    /// Name of the trigger group this condition belongs to, if any.
+    /// </summary>
+    public string? TriggerGroupName { get; set; }
 }

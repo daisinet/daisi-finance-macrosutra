@@ -8,6 +8,8 @@ namespace MacroSutra.Brokers;
 /// </summary>
 public class PaperBrokerageProvider : IBrokerageProvider
 {
+    public bool SupportsFractionalShares => true;
+
     public Task<bool> ValidateCredentialsAsync(string credentialRef)
     {
         return Task.FromResult(true);

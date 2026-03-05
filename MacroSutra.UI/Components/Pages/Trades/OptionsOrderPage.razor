@@ -1,0 +1,203 @@
+@page "/options"
+@using MacroSutra.Core.Enums
+@using MacroSutra.Core.Models.Options
+
+<PageTitle>Options Trading — MacroSutra</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Options Trading</MudText>
+
+<MudGrid Class="mb-3">
+    <MudItem xs="12" md="3">
+        <MudTextField @bind-Value="symbol" Label="Underlying Symbol" Placeholder="AAPL" />
+    </MudItem>
+    <MudItem xs="12" md="3">
+        <MudSelect @bind-Value="selectedBrokerageAccountId" Label="Brokerage Account">
+            @foreach (var a in optionsBrokerageAccounts)
+            {
+                <MudSelectItem Value="@a.id">@a.Name (@a.Provider)</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" md="3" Class="d-flex align-end">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadChain"
+                   Disabled="@(string.IsNullOrWhiteSpace(symbol) || string.IsNullOrEmpty(selectedBrokerageAccountId) || loadingChain)">
+            @if (loadingChain) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-1" /> }
+            Load Chain
+        </MudButton>
+    </MudItem>
+</MudGrid>
+
+@if (chain != null)
+{
+    <MudText Typo="Typo.subtitle1" Class="mb-2">
+        @chain.UnderlyingSymbol — $@chain.UnderlyingPrice
+    </MudText>
+
+    @if (chain.Expirations.Count > 0)
+    {
+        <MudSelect @bind-Value="selectedExpiration" Label="Expiration" Class="mb-3">
+            @foreach (var exp in chain.Expirations)
+            {
+                <MudSelectItem Value="@exp.ExpirationDate">@exp.ExpirationDate.ToString("MMM dd, yyyy")</MudSelectItem>
+            }
+        </MudSelect>
+    }
+
+    @if (SelectedExpirationData != null)
+    {
+        <MudGrid>
+            <MudItem xs="12" md="5">
+                <MudText Typo="Typo.h6" Color="Color.Success">Calls</MudText>
+                <MudTable T="OptionContract" Items="@SelectedExpirationData.Calls" Hover="true" Dense="true" OnRowClick="@((TableRowClickEventArgs<OptionContract> args) => SelectContract(args.Item, OptionType.Call))">
+                    <HeaderContent>
+                        <MudTh>Strike</MudTh><MudTh>Bid</MudTh><MudTh>Ask</MudTh><MudTh>Vol</MudTh><MudTh>OI</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.StrikePrice</MudTd>
+                        <MudTd>@context.Bid?.ToString("F2")</MudTd>
+                        <MudTd>@context.Ask?.ToString("F2")</MudTd>
+                        <MudTd>@context.Volume</MudTd>
+                        <MudTd>@context.OpenInterest</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudItem>
+            <MudItem xs="12" md="2" Class="d-flex align-center justify-center">
+                <MudText Typo="Typo.h6">Strike</MudText>
+            </MudItem>
+            <MudItem xs="12" md="5">
+                <MudText Typo="Typo.h6" Color="Color.Error">Puts</MudText>
+                <MudTable T="OptionContract" Items="@SelectedExpirationData.Puts" Hover="true" Dense="true" OnRowClick="@((TableRowClickEventArgs<OptionContract> args) => SelectContract(args.Item, OptionType.Put))">
+                    <HeaderContent>
+                        <MudTh>Strike</MudTh><MudTh>Bid</MudTh><MudTh>Ask</MudTh><MudTh>Vol</MudTh><MudTh>OI</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.StrikePrice</MudTd>
+                        <MudTd>@context.Bid?.ToString("F2")</MudTd>
+                        <MudTd>@context.Ask?.ToString("F2")</MudTd>
+                        <MudTd>@context.Volume</MudTd>
+                        <MudTd>@context.OpenInterest</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudItem>
+        </MudGrid>
+    }
+}
+
+@if (selectedContract != null)
+{
+    <MudPaper Class="pa-4 mt-4" Elevation="2">
+        <MudText Typo="Typo.h6" Class="mb-2">Place Options Order</MudText>
+        <MudText>Contract: @selectedContract.ContractSymbol (@selectedOptionType @selectedContract.StrikePrice)</MudText>
+        <MudGrid Class="mt-2">
+            <MudItem xs="12" md="3">
+                <MudSelect @bind-Value="orderAction" Label="Action">
+                    <MudSelectItem Value="@TradeActionType.BuyCall" Disabled="@(selectedOptionType != OptionType.Call)">Buy Call</MudSelectItem>
+                    <MudSelectItem Value="@TradeActionType.BuyPut" Disabled="@(selectedOptionType != OptionType.Put)">Buy Put</MudSelectItem>
+                    <MudSelectItem Value="@TradeActionType.SellCall" Disabled="@(selectedOptionType != OptionType.Call)">Sell Call</MudSelectItem>
+                    <MudSelectItem Value="@TradeActionType.SellPut" Disabled="@(selectedOptionType != OptionType.Put)">Sell Put</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudNumericField @bind-Value="contracts" Label="Contracts" Min="1" />
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudNumericField @bind-Value="limitPrice" Label="Limit Price (optional)" />
+            </MudItem>
+            <MudItem xs="12" md="3" Class="d-flex align-end">
+                <MudButton Variant="Variant.Filled" Color="Color.Warning" OnClick="PlaceOrder" Disabled="@placing">
+                    @if (placing) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-1" /> }
+                    Place Order
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+}
+
+@code {
+    [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
+    [CascadingParameter(Name = "CurrentUser")] private MacroSutraUser? CurrentUser { get; set; }
+    [Inject] private IDataProvider Data { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+
+    private string symbol = "";
+    private string? selectedBrokerageAccountId;
+    private List<BrokerageAccount> optionsBrokerageAccounts = new();
+    private OptionsChain? chain;
+    private DateOnly selectedExpiration;
+    private bool loadingChain;
+
+    private OptionsExpiration? SelectedExpirationData => chain?.Expirations.FirstOrDefault(e => e.ExpirationDate == selectedExpiration);
+
+    private OptionContract? selectedContract;
+    private OptionType selectedOptionType;
+    private TradeActionType orderAction = TradeActionType.BuyCall;
+    private int contracts = 1;
+    private decimal? limitPrice;
+    private bool placing;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(AccountId)) return;
+        var allAccounts = await Data.GetBrokerageAccountsAsync(AccountId, activeOnly: true);
+        // Filter to options-supporting providers
+        optionsBrokerageAccounts = allAccounts.Where(a =>
+            a.Provider is BrokerageProvider.Alpaca or BrokerageProvider.Tastytrade).ToList();
+    }
+
+    private async Task LoadChain()
+    {
+        if (string.IsNullOrWhiteSpace(symbol) || string.IsNullOrEmpty(selectedBrokerageAccountId)) return;
+        loadingChain = true;
+        try
+        {
+            chain = await Data.GetOptionsChainAsync(AccountId, selectedBrokerageAccountId, symbol.Trim().ToUpperInvariant());
+            if (chain?.Expirations.Count > 0)
+                selectedExpiration = chain.Expirations[0].ExpirationDate;
+            selectedContract = null;
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        finally { loadingChain = false; }
+    }
+
+    private void SelectContract(OptionContract contract, OptionType optionType)
+    {
+        selectedContract = contract;
+        selectedOptionType = optionType;
+        orderAction = optionType == OptionType.Call ? TradeActionType.BuyCall : TradeActionType.BuyPut;
+    }
+
+    private async Task PlaceOrder()
+    {
+        if (selectedContract == null || string.IsNullOrEmpty(selectedBrokerageAccountId)) return;
+        placing = true;
+        try
+        {
+            var side = orderAction is TradeActionType.BuyCall or TradeActionType.BuyPut ? TradeSide.Buy : TradeSide.Sell;
+            var trade = new Trade
+            {
+                AccountId = AccountId,
+                UserId = CurrentUser?.id ?? "",
+                BrokerageAccountId = selectedBrokerageAccountId,
+                Symbol = selectedContract.ContractSymbol,
+                Side = side,
+                OrderType = orderAction,
+                Quantity = contracts,
+                LimitPrice = limitPrice,
+                OptionDetails = new OptionDetails
+                {
+                    ContractSymbol = selectedContract.ContractSymbol,
+                    UnderlyingSymbol = chain?.UnderlyingSymbol ?? symbol,
+                    OptionType = selectedOptionType,
+                    ExpirationDate = selectedExpiration,
+                    StrikePrice = selectedContract.StrikePrice,
+                    Contracts = contracts
+                }
+            };
+            await Data.PlaceOptionsOrderAsync(trade);
+            Snackbar.Add("Options order placed.", Severity.Success);
+            selectedContract = null;
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        finally { placing = false; }
+    }
+}

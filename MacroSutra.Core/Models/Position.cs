@@ -1,3 +1,5 @@
+using MacroSutra.Core.Models.Options;
+
 namespace MacroSutra.Core.Models;
 
 /// <summary>
@@ -16,6 +18,17 @@ public class Position
     public decimal? CurrentPrice { get; set; }
     public decimal? MarketValue => CurrentPrice.HasValue ? CurrentPrice.Value * Quantity : null;
     public decimal? UnrealizedPnL => MarketValue.HasValue ? MarketValue.Value - (AverageCost * Quantity) : null;
+
+    /// <summary>
+    /// Option-specific details. Null for equity/ETF positions.
+    /// </summary>
+    public OptionDetails? OptionDetails { get; set; }
+
+    /// <summary>
+    /// Whether this position is an options contract.
+    /// </summary>
+    public bool IsOption => OptionDetails != null;
+
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedUtc { get; set; }
 }

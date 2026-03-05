@@ -1,0 +1,49 @@
+@page "/learn/tax-loss-harvesting"
+@layout MacroSutra.Web.Components.Layout.LandingLayout
+
+<PageTitle>MacroSutra - Tax-Loss Harvesting Guide</PageTitle>
+
+<section class="landing-section">
+    <div class="landing-container">
+        <h1>Tax-Loss Harvesting</h1>
+        <p>Tax-loss harvesting identifies positions with unrealized losses that could be sold to offset capital gains and reduce your tax bill. MacroSutra provides a read-only analysis tool &mdash; it does not automatically execute trades.</p>
+
+        <p><strong>Disclaimer:</strong> This feature is for informational purposes only and does not constitute tax advice. Consult a qualified tax professional before making any tax-related investment decisions.</p>
+
+        <h2 id="how-it-works" class="mt-4">How It Works</h2>
+        <ol>
+            <li>MacroSutra scans all equity positions in your linked brokerage accounts.</li>
+            <li>Positions with unrealized losses (current price below average cost) are identified as <strong>harvesting candidates</strong>.</li>
+            <li>Each candidate's estimated tax benefit is calculated at a 20% capital gains rate.</li>
+            <li>Recent trades are checked for <strong>wash sale risk</strong> &mdash; if you bought the same symbol within the last 30 days, the IRS wash sale rule may disallow the loss deduction.</li>
+        </ol>
+
+        <h2 id="report" class="mt-4">Reading the Report</h2>
+        <p>Navigate to <strong>Portfolio &rarr; Tax-Loss Harvesting</strong> and click <strong>Analyze Portfolio</strong>. The report shows:</p>
+        <ul>
+            <li><strong>Total Estimated Loss</strong> &mdash; Sum of unrealized losses across all candidates.</li>
+            <li><strong>Potential Tax Benefit</strong> &mdash; Estimated tax savings at 20% (excludes wash-sale candidates).</li>
+            <li><strong>Candidates Count</strong> &mdash; Number of positions with unrealized losses.</li>
+        </ul>
+        <p>The candidates table shows each position's symbol, quantity, average cost, current price, unrealized loss, estimated tax benefit, and wash sale risk status.</p>
+
+        <h2 id="wash-sale" class="mt-4">Wash Sale Rule</h2>
+        <p>The IRS wash sale rule prevents you from claiming a loss deduction if you buy a "substantially identical" security within 30 days before or after the sale. MacroSutra flags candidates with wash sale risk when a buy trade for the same symbol occurred within the last 30 days.</p>
+        <p>Candidates flagged with wash sale risk show an estimated tax benefit of $0 and are excluded from the total benefit calculation.</p>
+
+        <h2 id="options" class="mt-4">What Is Excluded</h2>
+        <ul>
+            <li><strong>Options positions</strong> &mdash; Options contracts are excluded from the analysis.</li>
+            <li><strong>Positions with gains</strong> &mdash; Only positions with negative unrealized P&amp;L are included.</li>
+            <li><strong>Positions without current prices</strong> &mdash; Positions that lack a current market price are skipped.</li>
+        </ul>
+
+        <h2 id="api" class="mt-4">SDK &amp; API</h2>
+<pre><code>var report = await client.Portfolio.GetTaxLossHarvestingReportAsync();
+// report.TotalEstimatedLoss
+// report.TotalEstimatedTaxBenefit
+// report.Candidates (list of positions with unrealized losses)</code></pre>
+
+        <p class="mt-4"><a href="/learn">&larr; Back to Learn</a></p>
+    </div>
+</section>

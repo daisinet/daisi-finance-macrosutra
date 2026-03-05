@@ -10,9 +10,6 @@
     <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/strategies/new">
         <MudIcon Icon="@Icons.Material.Filled.Add" Class="me-1" /> New Strategy
     </MudButton>
-    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/strategies/builder">
-        <MudIcon Icon="@Icons.Material.Filled.Dashboard" Class="me-1" /> Visual Builder
-    </MudButton>
     <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/strategies/templates">
         <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Class="me-1" /> Templates
     </MudButton>
@@ -51,7 +48,7 @@
                 <MudChip T="string" Size="Size.Small" Color="Color.Info">@sym</MudChip>
             }
         </MudTd>
-        <MudTd>@context.Conditions.Count</MudTd>
+        <MudTd>@context.TriggerGroups.Count group(s)</MudTd>
         <MudTd>
             @if (context.LastEvaluatedUtc.HasValue)
             {

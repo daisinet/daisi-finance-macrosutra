@@ -16,6 +16,14 @@
             }
         </MudSelect>
     </MudItem>
+    <MudItem xs="12" md="4" Class="d-flex align-end gap-2">
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="ExportCsv" Disabled="@exporting">
+            <MudIcon Icon="@Icons.Material.Filled.Download" Class="me-1" Size="Size.Small" /> Export CSV
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="ExportPdf" Disabled="@exporting">
+            <MudIcon Icon="@Icons.Material.Filled.PictureAsPdf" Class="me-1" Size="Size.Small" /> Export PDF
+        </MudButton>
+    </MudItem>
 </MudGrid>
 
 <MudTable Items="@trades" Hover="true" Striped="true" Dense="true" Loading="@loading">
@@ -32,7 +40,13 @@
         <MudTd>@context.CreatedUtc.ToString("MMM dd, HH:mm")</MudTd>
         <MudTd>@context.Symbol</MudTd>
         <MudTd>@context.Side</MudTd>
-        <MudTd>@context.OrderType</MudTd>
+        <MudTd>
+            @context.OrderType
+            @if (context.OptionDetails != null)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Info">@context.OptionDetails.OptionType @context.OptionDetails.StrikePrice @context.OptionDetails.ExpirationDate</MudChip>
+            }
+        </MudTd>
         <MudTd>@context.Quantity</MudTd>
         <MudTd>@(context.FilledPrice?.ToString("C") ?? "—")</MudTd>
         <MudTd>
@@ -45,10 +59,13 @@
     [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
     [Inject] private IDataProvider Data { get; set; } = default!;
 
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
     private List<Trade> trades = new();
     private string? symbolFilter;
     private TradeStatus? statusFilter;
     private bool loading = true;
+    private bool exporting;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -65,6 +82,30 @@
         }
         catch { }
         finally { loading = false; }
+    }
+
+    private async Task ExportCsv()
+    {
+        exporting = true;
+        try
+        {
+            var bytes = await Data.ExportTradesCsvAsync(AccountId, symbolFilter);
+            await JS.InvokeVoidAsync("downloadFile", "trades.csv", "text/csv", Convert.ToBase64String(bytes));
+        }
+        catch { }
+        finally { exporting = false; }
+    }
+
+    private async Task ExportPdf()
+    {
+        exporting = true;
+        try
+        {
+            var bytes = await Data.ExportTradesPdfAsync(AccountId, symbolFilter);
+            await JS.InvokeVoidAsync("downloadFile", "trades.pdf", "application/pdf", Convert.ToBase64String(bytes));
+        }
+        catch { }
+        finally { exporting = false; }
     }
 
     private static Color GetStatusColor(TradeStatus status) => status switch

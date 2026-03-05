@@ -37,7 +37,7 @@
             </NavLink>
 
             @if (!sidebarCollapsed) { <div class="ms-nav-section">Trading</div> }
-            <NavLink class="ms-nav-item" href="strategies">
+            <NavLink class="ms-nav-item" href="strategies" Match="NavLinkMatch.All">
                 <i class="fa-duotone fa-chess-knight"></i>
                 @if (!sidebarCollapsed) { <span>Strategies</span> }
             </NavLink>
@@ -53,11 +53,31 @@
                 <i class="fa-duotone fa-chart-line"></i>
                 @if (!sidebarCollapsed) { <span>Backtesting</span> }
             </NavLink>
+            <NavLink class="ms-nav-item" href="charts">
+                <i class="fa-duotone fa-chart-candlestick"></i>
+                @if (!sidebarCollapsed) { <span>Charts</span> }
+            </NavLink>
+            <NavLink class="ms-nav-item" href="options">
+                <i class="fa-duotone fa-layer-group"></i>
+                @if (!sidebarCollapsed) { <span>Options</span> }
+            </NavLink>
+            <NavLink class="ms-nav-item" href="dca">
+                <i class="fa-duotone fa-calendar-clock"></i>
+                @if (!sidebarCollapsed) { <span>DCA</span> }
+            </NavLink>
 
             @if (!sidebarCollapsed) { <div class="ms-nav-section">Portfolio</div> }
             <NavLink class="ms-nav-item" href="portfolio" Match="NavLinkMatch.All">
                 <i class="fa-duotone fa-chart-pie"></i>
                 @if (!sidebarCollapsed) { <span>Positions</span> }
+            </NavLink>
+            <NavLink class="ms-nav-item" href="rebalance">
+                <i class="fa-duotone fa-scale-balanced"></i>
+                @if (!sidebarCollapsed) { <span>Rebalance</span> }
+            </NavLink>
+            <NavLink class="ms-nav-item" href="tax-loss-harvesting">
+                <i class="fa-duotone fa-hand-holding-dollar"></i>
+                @if (!sidebarCollapsed) { <span>Tax-Loss Harvesting</span> }
             </NavLink>
             @if (!sidebarCollapsed) { <div class="ms-nav-section">Social</div> }
             <NavLink class="ms-nav-item" href="marketplace">

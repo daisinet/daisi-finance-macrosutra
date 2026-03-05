@@ -1,0 +1,83 @@
+@page "/learn/options"
+@layout MacroSutra.Web.Components.Layout.LandingLayout
+
+<PageTitle>MacroSutra - Options Trading Guide</PageTitle>
+
+<section class="landing-section">
+    <div class="landing-container">
+        <h1>Options Trading (V1)</h1>
+        <p>MacroSutra supports single-leg options trading for buying calls, buying puts, selling covered calls, and selling cash-secured puts. Multi-leg strategies (spreads, iron condors) are planned for a future release.</p>
+
+        <h2 id="supported" class="mt-4">Supported Brokerages</h2>
+        <p>Options trading is available with brokerages that support options APIs:</p>
+        <ul>
+            <li><strong>Alpaca</strong> &mdash; Full options chain retrieval and order placement.</li>
+            <li><strong>Tastytrade</strong> &mdash; Options-native broker with full chain and order support.</li>
+        </ul>
+        <p>Other brokerages will show "Options not supported" and cannot be used for options orders. The Options page automatically filters to show only options-capable accounts.</p>
+
+        <h2 id="chain" class="mt-4">Loading an Options Chain</h2>
+        <ol>
+            <li>Navigate to <strong>Trading &rarr; Options</strong> in the sidebar.</li>
+            <li>Enter an underlying symbol (e.g., <strong>AAPL</strong>).</li>
+            <li>Select a brokerage account from the dropdown (only options-supporting accounts are shown).</li>
+            <li>Click <strong>Load Chain</strong>. The chain loads with available expirations.</li>
+            <li>Select an expiration date from the dropdown. The chain displays calls on the left and puts on the right, with strike prices, bid/ask, volume, and open interest.</li>
+        </ol>
+
+        <h2 id="placing" class="mt-4">Placing an Options Order</h2>
+        <ol>
+            <li>Click a row in the calls or puts table to select a contract.</li>
+            <li>Choose an action: <strong>Buy Call</strong>, <strong>Buy Put</strong>, <strong>Sell Call</strong>, or <strong>Sell Put</strong>.</li>
+            <li>Enter the number of <strong>contracts</strong> (each contract represents 100 shares).</li>
+            <li>Optionally enter a <strong>limit price</strong>. Leave blank for a market order.</li>
+            <li>Click <strong>Place Order</strong>.</li>
+        </ol>
+
+        <h2 id="tracking" class="mt-4">Tracking Options Trades</h2>
+        <p>Options trades appear on the standard Trades page alongside equity trades. They are identified by:</p>
+        <ul>
+            <li>A contract symbol (e.g., <code>AAPL240620C200</code>).</li>
+            <li>The order type showing the specific action (BuyCall, BuyPut, SellCall, SellPut).</li>
+            <li>An <strong>Options</strong> chip badge on the trade row.</li>
+        </ul>
+
+        <h2 id="data-model" class="mt-4">Options Data Model</h2>
+        <p>Each options trade includes an <code>OptionDetails</code> object with:</p>
+        <ul>
+            <li><strong>ContractSymbol</strong> &mdash; The OCC-format symbol.</li>
+            <li><strong>UnderlyingSymbol</strong> &mdash; The underlying stock (e.g., AAPL).</li>
+            <li><strong>OptionType</strong> &mdash; Call or Put.</li>
+            <li><strong>ExpirationDate</strong> &mdash; Contract expiration date.</li>
+            <li><strong>StrikePrice</strong> &mdash; The strike price.</li>
+            <li><strong>Contracts</strong> &mdash; Number of contracts.</li>
+            <li><strong>Greeks</strong> (optional) &mdash; Delta, Gamma, Theta, Vega, and Implied Volatility snapshot.</li>
+        </ul>
+
+        <h2 id="api" class="mt-4">SDK &amp; API</h2>
+<pre><code>// Get options chain
+var chain = await client.Portfolio.GetOptionsChainAsync(
+    brokerageAccountId: "bra-123",
+    underlyingSymbol: "AAPL");
+
+// Place an options order
+var trade = await client.Portfolio.PlaceOptionsOrderAsync(new OptionsOrderRequest
+{
+    BrokerageAccountId = "bra-123",
+    Symbol = "AAPL240620C200",
+    Side = "Buy",
+    OrderType = "BuyCall",
+    Quantity = 5,
+    LimitPrice = 3.50m
+});</code></pre>
+
+        <h2 id="limitations" class="mt-4">V1 Limitations</h2>
+        <ul>
+            <li><strong>Single-leg only</strong> &mdash; Multi-leg strategies (vertical spreads, iron condors, strangles) are not yet supported.</li>
+            <li><strong>No automated options strategies</strong> &mdash; Options orders are manual only; they cannot be triggered by strategy conditions.</li>
+            <li><strong>Chain data</strong> &mdash; Options chain completeness depends on the broker's API. Some fields (Greeks, last price) may not be available from all providers.</li>
+        </ul>
+
+        <p class="mt-4"><a href="/learn">&larr; Back to Learn</a></p>
+    </div>
+</section>

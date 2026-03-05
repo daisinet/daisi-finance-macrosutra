@@ -87,10 +87,13 @@ public class StrategyEvaluationService(
 
         logger.LogDebug("Evaluating {Count} active strategies", strategies.Count);
 
-        // 2. Collect unique symbols
+        // 2. Collect unique symbols and intervals
         var symbols = strategies.SelectMany(s => s.Symbols).Distinct().ToList();
+        var intervals = strategies
+            .SelectMany(s => s.TriggerGroups.Select(tg => tg.Interval))
+            .Distinct().ToList();
 
-        // 3. Fetch market data for all symbols
+        // 3. Fetch market data for all symbols and intervals
         var snapshots = new Dictionary<string, MarketSnapshot>();
         var priceHistories = new Dictionary<string, decimal[]>();
 
@@ -102,9 +105,13 @@ public class StrategyEvaluationService(
             if (snapshot != null)
                 snapshots[symbol] = snapshot;
 
-            var history = await marketDataService.GetHistoricalPricesAsync(symbol);
-            if (history.Length > 0)
-                priceHistories[symbol] = history;
+            foreach (var interval in intervals)
+            {
+                var key = $"{symbol}:{interval}";
+                var history = await marketDataService.GetHistoricalPricesAsync(symbol, interval);
+                if (history.Length > 0)
+                    priceHistories[key] = history;
+            }
         }
 
         // 4. Evaluate each strategy
@@ -141,106 +148,27 @@ public class StrategyEvaluationService(
             priceHistories.TryGetValue(symbol, out var history);
             history ??= [];
 
-            // Build per-strategy previous values view using ConcurrentDictionary
-            var strategyPrevValues = new Dictionary<string, decimal>();
-            var allConditions = strategy.RootConditionGroup != null
-                ? CollectConditions(strategy.RootConditionGroup)
-                : strategy.Conditions;
-            foreach (var condition in allConditions)
+            foreach (var triggerGroup in strategy.TriggerGroups)
             {
-                var key = $"{strategy.id}:{condition.ConditionId}:{symbol}";
-                if (_previousValues.TryGetValue(key, out var prev))
-                    strategyPrevValues[$"{condition.ConditionId}:{symbol}"] = prev;
-            }
+                var intervalKey = $"{symbol}:{triggerGroup.Interval}";
+                priceHistories.TryGetValue(intervalKey, out var groupHistory);
+                groupHistory ??= history;
+                // Append the live price so indicators reflect the latest trade
+                if (snapshot.Price > 0)
+                    groupHistory = [.. groupHistory, snapshot.Price];
 
-            // Evaluate conditions — use recursive group if available, else flat
-            bool shouldTrigger;
-            if (strategy.RootConditionGroup != null)
-            {
+                var strategyPrevValues = BuildPreviousValues(strategy.id, symbol, CollectConditions(triggerGroup.Conditions));
                 var (groupTriggered, groupResults) = conditionEvaluator.EvaluateGroup(
-                    strategy.RootConditionGroup, snapshot, history, strategyPrevValues);
-                shouldTrigger = groupTriggered;
+                    triggerGroup.Conditions, snapshot, groupHistory, strategyPrevValues);
+                WriteCrossoverState(strategy.id, symbol, groupResults);
 
-                // Write back to persistent crossover state
-                foreach (var (_, value, conditionId) in groupResults)
+                if (groupTriggered)
                 {
-                    var key = $"{strategy.id}:{conditionId}:{symbol}";
-                    _previousValues[key] = value;
-                }
-            }
-            else
-            {
-                var results = new List<(bool passed, decimal value)>();
-                foreach (var condition in strategy.Conditions)
-                {
-                    var (triggered, currentValue) = conditionEvaluator.Evaluate(condition, snapshot, history, strategyPrevValues);
-                    results.Add((triggered, currentValue));
-
-                    // Write back to persistent crossover state
-                    var key = $"{strategy.id}:{condition.ConditionId}:{symbol}";
-                    _previousValues[key] = currentValue;
-                }
-
-                // Apply logic group
-                shouldTrigger = strategy.LogicGroup switch
-                {
-                    LogicGroupType.And => results.Count > 0 && results.All(r => r.passed),
-                    LogicGroupType.Or => results.Any(r => r.passed),
-                    _ => false
-                };
-            }
-
-            if (shouldTrigger)
-            {
-                logger.LogInformation("Strategy {StrategyName} ({StrategyId}) triggered for {Symbol}",
-                    strategy.Name, strategy.id, symbol);
-                var trades = await executionService.ExecuteActionsAsync(strategy, symbol, snapshot);
-                anyTriggered = true;
-
-                // Publish real-time alert (best-effort)
-                if (eventPublisher != null && trades.Count > 0)
-                {
-                    try
-                    {
-                        await eventPublisher.PublishStrategyTriggeredAsync(new StrategyAlertEvent
-                        {
-                            StrategyId = strategy.id,
-                            StrategyName = strategy.Name,
-                            Symbol = symbol,
-                            TriggeredUtc = DateTime.UtcNow,
-                            TradeIds = trades.Select(t => t.id).ToList(),
-                            TradeSide = trades.First().Side,
-                            Quantity = trades.Sum(t => t.Quantity),
-                            AccountId = strategy.AccountId
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.LogWarning(ex, "Failed to publish strategy alert for {StrategyId}", strategy.id);
-                    }
-                }
-
-                // Record performance trigger (best-effort)
-                if (performanceService != null && trades.Count > 0)
-                {
-                    try
-                    {
-                        await performanceService.RecordTriggerAsync(strategy.AccountId, strategy.id, symbol, trades);
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.LogWarning(ex, "Failed to record performance trigger for {StrategyId}", strategy.id);
-                    }
-                }
-
-                // Fan out to subscribers (best-effort — never blocks publisher trades)
-                try
-                {
-                    await dispatchService.DispatchAsync(strategy, trades);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Subscription dispatch failed for strategy {StrategyId}", strategy.id);
+                    logger.LogInformation("Strategy {StrategyName} ({StrategyId}) trigger group '{GroupName}' fired for {Symbol}",
+                        strategy.Name, strategy.id, triggerGroup.Name, symbol);
+                    var trades = await executionService.ExecuteActionsAsync(strategy, symbol, snapshot, triggerGroup.Actions);
+                    anyTriggered = true;
+                    await PostTriggerAsync(strategy, symbol, trades, dispatchService, performanceService);
                 }
             }
         }
@@ -250,6 +178,75 @@ public class StrategyEvaluationService(
         if (anyTriggered)
             strategy.LastTriggeredUtc = DateTime.UtcNow;
         await cosmo.UpdateStrategyAsync(strategy);
+    }
+
+    private Dictionary<string, decimal> BuildPreviousValues(string strategyId, string symbol, List<TriggerCondition> conditions)
+    {
+        var prev = new Dictionary<string, decimal>();
+        foreach (var condition in conditions)
+        {
+            var key = $"{strategyId}:{condition.ConditionId}:{symbol}";
+            if (_previousValues.TryGetValue(key, out var val))
+                prev[$"{condition.ConditionId}:{symbol}"] = val;
+        }
+        return prev;
+    }
+
+    private void WriteCrossoverState(string strategyId, string symbol, List<(bool passed, decimal value, string conditionId)> results)
+    {
+        foreach (var (_, value, conditionId) in results)
+        {
+            var key = $"{strategyId}:{conditionId}:{symbol}";
+            _previousValues[key] = value;
+        }
+    }
+
+    private async Task PostTriggerAsync(
+        TradingStrategy strategy, string symbol, List<Trade> trades,
+        SubscriptionDispatchService dispatchService, StrategyPerformanceService? performanceService)
+    {
+        if (eventPublisher != null && trades.Count > 0)
+        {
+            try
+            {
+                await eventPublisher.PublishStrategyTriggeredAsync(new StrategyAlertEvent
+                {
+                    StrategyId = strategy.id,
+                    StrategyName = strategy.Name,
+                    Symbol = symbol,
+                    TriggeredUtc = DateTime.UtcNow,
+                    TradeIds = trades.Select(t => t.id).ToList(),
+                    TradeSide = trades.First().Side,
+                    Quantity = trades.Sum(t => t.Quantity),
+                    AccountId = strategy.AccountId
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to publish strategy alert for {StrategyId}", strategy.id);
+            }
+        }
+
+        if (performanceService != null && trades.Count > 0)
+        {
+            try
+            {
+                await performanceService.RecordTriggerAsync(strategy.AccountId, strategy.id, symbol, trades);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to record performance trigger for {StrategyId}", strategy.id);
+            }
+        }
+
+        try
+        {
+            await dispatchService.DispatchAsync(strategy, trades);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Subscription dispatch failed for strategy {StrategyId}", strategy.id);
+        }
     }
 
     /// <summary>
@@ -270,16 +267,17 @@ public class StrategyEvaluationService(
             var snapshot = await marketDataService.GetSnapshotAsync(symbol);
             if (snapshot == null) continue;
 
-            var history = await marketDataService.GetHistoricalPricesAsync(symbol);
-
-            if (strategy.RootConditionGroup != null)
+            foreach (var triggerGroup in strategy.TriggerGroups)
             {
+                var history = await marketDataService.GetHistoricalPricesAsync(symbol, triggerGroup.Interval);
+                // Append the live price so indicators reflect the latest trade
+                if (snapshot.Price > 0)
+                    history = [.. history, snapshot.Price];
+                var conditionMap = BuildConditionMap(triggerGroup.Conditions);
                 var (groupTriggered, groupResults) = evaluator.EvaluateGroup(
-                    strategy.RootConditionGroup, snapshot, history, tempPreviousValues);
+                    triggerGroup.Conditions, snapshot, history, tempPreviousValues);
                 perSymbolTriggered.Add(groupTriggered);
 
-                // Look up condition metadata from the group tree for richer results
-                var conditionMap = BuildConditionMap(strategy.RootConditionGroup);
                 foreach (var (passed, value, conditionId) in groupResults)
                 {
                     conditionMap.TryGetValue(conditionId, out var cond);
@@ -290,42 +288,14 @@ public class StrategyEvaluationService(
                         CurrentValue = value,
                         TargetValue = cond?.Value ?? 0,
                         Operator = cond?.Operator ?? ConditionOperator.Equal,
-                        Passed = passed
+                        Passed = passed,
+                        TriggerGroupName = triggerGroup.Name
                     });
                 }
-            }
-            else
-            {
-                var symbolResults = new List<bool>();
-                foreach (var condition in strategy.Conditions)
-                {
-                    var (triggered, currentValue) = evaluator.Evaluate(condition, snapshot, history, tempPreviousValues);
-                    symbolResults.Add(triggered);
-
-                    result.Conditions.Add(new ConditionResult
-                    {
-                        ConditionId = condition.ConditionId,
-                        ConditionType = condition.ConditionType,
-                        CurrentValue = currentValue,
-                        TargetValue = condition.Value,
-                        Operator = condition.Operator,
-                        Passed = triggered
-                    });
-                }
-
-                var symbolTriggered = strategy.LogicGroup switch
-                {
-                    LogicGroupType.And => symbolResults.Count > 0 && symbolResults.All(r => r),
-                    LogicGroupType.Or => symbolResults.Any(r => r),
-                    _ => false
-                };
-                perSymbolTriggered.Add(symbolTriggered);
             }
         }
 
-        // Any symbol triggering means the strategy would trigger
         result.WouldTrigger = perSymbolTriggered.Any(t => t);
-
         return result;
     }
 

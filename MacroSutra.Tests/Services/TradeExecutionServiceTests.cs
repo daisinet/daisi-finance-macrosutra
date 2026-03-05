@@ -81,7 +81,7 @@ public class TradeExecutionServiceTests
         var strategy = new TradingStrategy
         {
             id = "str-1", AccountId = "acc1", Name = "Test Alert",
-            Actions = new() { new TradeAction { ActionType = TradeActionType.Alert, Side = TradeSide.Buy } }
+            TriggerGroups = new() { new TriggerGroup { Name = "Test", Actions = new() { new TradeAction { ActionType = TradeActionType.Alert, Side = TradeSide.Buy } } } }
         };
 
         var trades = await service.ExecuteActionsAsync(strategy, "AAPL", MakeSnapshot());
@@ -118,7 +118,7 @@ public class TradeExecutionServiceTests
         var strategy = new TradingStrategy
         {
             id = "str-1", AccountId = "acc1", BrokerageAccountId = "bra-1",
-            Actions = new() { new TradeAction { ActionType = TradeActionType.MarketOrder, Side = TradeSide.Buy, QuantityType = QuantityType.Shares, Quantity = 5 } }
+            TriggerGroups = new() { new TriggerGroup { Name = "Test", Actions = new() { new TradeAction { ActionType = TradeActionType.MarketOrder, Side = TradeSide.Buy, QuantityType = QuantityType.Shares, Quantity = 5 } } } }
         };
 
         var trades = await service.ExecuteActionsAsync(strategy, "AAPL", MakeSnapshot());
@@ -138,11 +138,122 @@ public class TradeExecutionServiceTests
         var strategy = new TradingStrategy
         {
             id = "str-1", AccountId = "acc1", BrokerageAccountId = null,
-            Actions = new() { new TradeAction { ActionType = TradeActionType.MarketOrder, Side = TradeSide.Buy, Quantity = 5 } }
+            TriggerGroups = new() { new TriggerGroup { Name = "Test", Actions = new() { new TradeAction { ActionType = TradeActionType.MarketOrder, Side = TradeSide.Buy, Quantity = 5 } } } }
         };
 
         var trades = await service.ExecuteActionsAsync(strategy, "AAPL", MakeSnapshot());
 
         Assert.Empty(trades);
+    }
+
+    // ── Options routing ──
+
+    [Fact]
+    public async Task ExecuteActionsAsync_BuyCall_RoutesToPlaceOptionsOrder()
+    {
+        var (service, cosmo, factory) = CreateSut();
+
+        var brokerageAccount = new BrokerageAccount
+        {
+            id = "bra-1", AccountId = "acc1", Provider = BrokerageProvider.Alpaca,
+            CredentialData = "{}", CachedBalance = 100_000m
+        };
+
+        cosmo.Setup(c => c.GetBrokerageAccountAsync("bra-1", "acc1")).ReturnsAsync(brokerageAccount);
+
+        var mockProvider = new Mock<IBrokerageProvider>();
+        mockProvider.Setup(p => p.PlaceOptionsOrderAsync(It.IsAny<string>(), It.IsAny<Trade>()))
+                    .ReturnsAsync("OPT-ORDER-123");
+        mockProvider.Setup(p => p.GetAccountBalanceAsync(It.IsAny<string>()))
+                    .ReturnsAsync(100_000m);
+
+        factory.Setup(f => f.GetProvider(BrokerageProvider.Alpaca)).Returns(mockProvider.Object);
+
+        var strategy = new TradingStrategy
+        {
+            id = "str-opt-1", AccountId = "acc1", BrokerageAccountId = "bra-1",
+            TriggerGroups = new() { new TriggerGroup { Name = "Test", Actions = new() { new TradeAction { ActionType = TradeActionType.BuyCall, Side = TradeSide.Buy, QuantityType = QuantityType.Shares, Quantity = 3 } } } }
+        };
+
+        var trades = await service.ExecuteActionsAsync(strategy, "AAPL", MakeSnapshot());
+
+        Assert.Single(trades);
+        mockProvider.Verify(p => p.PlaceOptionsOrderAsync(It.IsAny<string>(), It.IsAny<Trade>()), Times.Once);
+        mockProvider.Verify(p => p.PlaceOrderAsync(It.IsAny<string>(), It.IsAny<Trade>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ExecuteActionsAsync_SellPut_RoutesToPlaceOptionsOrder()
+    {
+        var (service, cosmo, factory) = CreateSut();
+
+        var brokerageAccount = new BrokerageAccount
+        {
+            id = "bra-1", AccountId = "acc1", Provider = BrokerageProvider.Alpaca,
+            CredentialData = "{}", CachedBalance = 100_000m
+        };
+
+        cosmo.Setup(c => c.GetBrokerageAccountAsync("bra-1", "acc1")).ReturnsAsync(brokerageAccount);
+
+        var mockProvider = new Mock<IBrokerageProvider>();
+        mockProvider.Setup(p => p.PlaceOptionsOrderAsync(It.IsAny<string>(), It.IsAny<Trade>()))
+                    .ReturnsAsync("OPT-ORDER-456");
+        mockProvider.Setup(p => p.GetAccountBalanceAsync(It.IsAny<string>()))
+                    .ReturnsAsync(100_000m);
+
+        factory.Setup(f => f.GetProvider(BrokerageProvider.Alpaca)).Returns(mockProvider.Object);
+
+        var strategy = new TradingStrategy
+        {
+            id = "str-opt-2", AccountId = "acc1", BrokerageAccountId = "bra-1",
+            TriggerGroups = new() { new TriggerGroup { Name = "Test", Actions = new() { new TradeAction { ActionType = TradeActionType.SellPut, Side = TradeSide.Sell, QuantityType = QuantityType.Shares, Quantity = 1 } } } }
+        };
+
+        var trades = await service.ExecuteActionsAsync(strategy, "AAPL", MakeSnapshot());
+
+        Assert.Single(trades);
+        mockProvider.Verify(p => p.PlaceOptionsOrderAsync(It.IsAny<string>(), It.IsAny<Trade>()), Times.Once);
+    }
+
+    // ── Fractional share rounding ──
+
+    [Fact]
+    public async Task ExecuteActionsAsync_NonFractionalProvider_RoundsDown()
+    {
+        var (service, cosmo, factory) = CreateSut();
+
+        var brokerageAccount = new BrokerageAccount
+        {
+            id = "bra-1", AccountId = "acc1", Provider = BrokerageProvider.Webull,
+            CredentialData = "{}", CachedBalance = 100_000m
+        };
+
+        cosmo.Setup(c => c.GetBrokerageAccountAsync("bra-1", "acc1")).ReturnsAsync(brokerageAccount);
+
+        var mockProvider = new Mock<IBrokerageProvider>();
+        mockProvider.Setup(p => p.SupportsFractionalShares).Returns(false);
+        mockProvider.Setup(p => p.PlaceOrderAsync(It.IsAny<string>(), It.IsAny<Trade>()))
+                    .ReturnsAsync("EXT-ORDER-789");
+        mockProvider.Setup(p => p.GetAccountBalanceAsync(It.IsAny<string>()))
+                    .ReturnsAsync(100_000m);
+
+        factory.Setup(f => f.GetProvider(BrokerageProvider.Webull)).Returns(mockProvider.Object);
+
+        var strategy = new TradingStrategy
+        {
+            id = "str-1", AccountId = "acc1", BrokerageAccountId = "bra-1",
+            TriggerGroups = new() { new TriggerGroup { Name = "Test", Actions = new() { new TradeAction
+            {
+                ActionType = TradeActionType.MarketOrder,
+                Side = TradeSide.Buy,
+                QuantityType = QuantityType.DollarAmount,
+                Quantity = 1000m // 1000 / 150 = 6.66
+            } } } }
+        };
+
+        var trades = await service.ExecuteActionsAsync(strategy, "AAPL", MakeSnapshot());
+
+        Assert.Single(trades);
+        Assert.Equal(6m, trades[0].Quantity); // Floored to whole shares
     }
 }

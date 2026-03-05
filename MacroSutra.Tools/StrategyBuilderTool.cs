@@ -11,7 +11,7 @@ namespace MacroSutra.Tools;
 
 /// <summary>
 /// AI-powered bot tool that converts natural language descriptions into trading strategies.
-/// Uses inference to parse user intent into structured conditions and actions.
+/// Uses inference to parse user intent into structured trigger groups with conditions and actions.
 /// </summary>
 public class StrategyBuilderTool : DaisiToolBase
 {
@@ -24,8 +24,8 @@ public class StrategyBuilderTool : DaisiToolBase
 
     public override string UseInstructions =>
         "Use this tool to create a trading strategy from a natural language description. " +
-        "The AI will convert the description into structured conditions and actions. " +
-        "Example: \"Buy AAPL when RSI drops below 30 and price is under $150\". " +
+        "The AI will convert the description into structured trigger groups with conditions and actions. " +
+        "Example: \"Buy AAPL when RSI drops below 30 and sell when RSI goes above 70\". " +
         "Keywords: create strategy, build strategy, new strategy, natural language, auto-create.";
 
     public override ToolParameter[] Parameters =>
@@ -82,14 +82,15 @@ public class StrategyBuilderTool : DaisiToolBase
                 Name = parsed.Name ?? $"Strategy for {string.Join(", ", symbolList)}",
                 Description = description,
                 Symbols = symbolList,
-                LogicGroup = parsed.LogicGroup,
-                Conditions = parsed.Conditions,
-                Actions = parsed.Actions,
+                TriggerGroups = parsed.TriggerGroups,
                 IsActive = false // user must activate manually
             };
 
             var service = context.Services.GetRequiredService<StrategyService>();
             strategy = await service.CreateStrategyAsync(strategy);
+
+            var totalConditions = strategy.TriggerGroups.Sum(tg => tg.Conditions.Conditions.Count);
+            var totalActions = strategy.TriggerGroups.Sum(tg => tg.Actions.Count);
 
             return new ToolResult
             {
@@ -100,12 +101,12 @@ public class StrategyBuilderTool : DaisiToolBase
                     strategy.Name,
                     strategy.Description,
                     strategy.Symbols,
-                    LogicGroup = strategy.LogicGroup.ToString(),
-                    ConditionCount = strategy.Conditions.Count,
-                    ActionCount = strategy.Actions.Count,
+                    TriggerGroupCount = strategy.TriggerGroups.Count,
+                    TotalConditions = totalConditions,
+                    TotalActions = totalActions,
                     strategy.IsActive
                 }),
-                OutputMessage = $"Created strategy '{strategy.Name}' with {strategy.Conditions.Count} condition(s) and {strategy.Actions.Count} action(s). Activate it when ready.",
+                OutputMessage = $"Created strategy '{strategy.Name}' with {strategy.TriggerGroups.Count} trigger group(s) ({totalConditions} condition(s), {totalActions} action(s)). Activate it when ready.",
                 OutputFormat = InferenceOutputFormats.Json
             };
         }
@@ -118,7 +119,8 @@ public class StrategyBuilderTool : DaisiToolBase
     internal static string BuildPrompt(string description, List<string> symbols)
     {
         return $$"""
-            You are a trading strategy builder. Convert the user's natural language description into a structured trading strategy.
+            You are a trading strategy builder. Convert the user's natural language description into a structured trading strategy with trigger groups.
+            Each trigger group is an independent set of conditions and actions. For example, a buy signal and a sell signal should be separate trigger groups.
 
             Available condition types: {{string.Join(", ", Enum.GetNames<ConditionType>())}}
             Available operators: {{string.Join(", ", Enum.GetNames<ConditionOperator>())}}
@@ -132,23 +134,28 @@ public class StrategyBuilderTool : DaisiToolBase
             Respond with ONLY a JSON object in this exact format:
             {
               "name": "strategy name",
-              "logicGroup": "And" or "Or",
-              "conditions": [
+              "triggerGroups": [
                 {
-                  "conditionType": "Price|Volume|PercentChange|MovingAverage|RSI|MACD|TimeOfDay|DayOfWeek",
-                  "operator": "GreaterThan|LessThan|CrossesAbove|CrossesBelow|Equal|GreaterThanOrEqual|LessThanOrEqual",
-                  "value": 0.0,
-                  "period": null
-                }
-              ],
-              "actions": [
-                {
-                  "actionType": "MarketOrder|LimitOrder|StopOrder|Alert",
-                  "side": "Buy|Sell",
-                  "quantityType": "Shares|Dollars|Percent",
-                  "quantity": 0.0,
-                  "limitPrice": null,
-                  "stopPrice": null
+                  "name": "Buy Signal",
+                  "logic": "And",
+                  "conditions": [
+                    {
+                      "conditionType": "Price|Volume|PercentChange|MovingAverage|RSI|MACD|TimeOfDay|DayOfWeek",
+                      "operator": "GreaterThan|LessThan|CrossesAbove|CrossesBelow|Equal|GreaterThanOrEqual|LessThanOrEqual",
+                      "value": 0.0,
+                      "period": null
+                    }
+                  ],
+                  "actions": [
+                    {
+                      "actionType": "MarketOrder|LimitOrder|StopOrder|Alert",
+                      "side": "Buy|Sell",
+                      "quantityType": "Shares|Dollars|Percent",
+                      "quantity": 0.0,
+                      "limitPrice": null,
+                      "stopPrice": null
+                    }
+                  ]
                 }
               ]
             }
@@ -170,50 +177,68 @@ public class StrategyBuilderTool : DaisiToolBase
 
             var result = new ParsedStrategy
             {
-                Name = root.TryGetProperty("name", out var n) ? n.GetString() : null,
-                LogicGroup = root.TryGetProperty("logicGroup", out var lg) && Enum.TryParse<LogicGroupType>(lg.GetString(), true, out var lgt)
-                    ? lgt : LogicGroupType.And
+                Name = root.TryGetProperty("name", out var n) ? n.GetString() : null
             };
 
-            if (root.TryGetProperty("conditions", out var conditions))
+            if (root.TryGetProperty("triggerGroups", out var groups))
             {
-                foreach (var c in conditions.EnumerateArray())
+                foreach (var g in groups.EnumerateArray())
                 {
-                    var cond = new TriggerCondition();
-                    if (c.TryGetProperty("conditionType", out var ct) && Enum.TryParse<ConditionType>(ct.GetString(), true, out var ctVal))
-                        cond.ConditionType = ctVal;
-                    if (c.TryGetProperty("operator", out var op) && Enum.TryParse<ConditionOperator>(op.GetString(), true, out var opVal))
-                        cond.Operator = opVal;
-                    if (c.TryGetProperty("value", out var v))
-                        cond.Value = v.GetDecimal();
-                    if (c.TryGetProperty("period", out var p) && p.ValueKind == JsonValueKind.Number)
-                        cond.Period = p.GetInt32();
-                    result.Conditions.Add(cond);
+                    var tg = new TriggerGroup();
+
+                    if (g.TryGetProperty("name", out var gn))
+                        tg.Name = gn.GetString() ?? "";
+
+                    if (g.TryGetProperty("interval", out var interval) && Enum.TryParse<BarTimeFrame>(interval.GetString(), true, out var ivVal))
+                        tg.Interval = ivVal;
+
+                    if (g.TryGetProperty("logic", out var logic) && Enum.TryParse<LogicGroupType>(logic.GetString(), true, out var lgt))
+                        tg.Conditions.Logic = lgt;
+
+                    if (g.TryGetProperty("conditions", out var conditions))
+                    {
+                        foreach (var c in conditions.EnumerateArray())
+                        {
+                            var cond = new TriggerCondition();
+                            if (c.TryGetProperty("conditionType", out var ct) && Enum.TryParse<ConditionType>(ct.GetString(), true, out var ctVal))
+                                cond.ConditionType = ctVal;
+                            if (c.TryGetProperty("operator", out var op) && Enum.TryParse<ConditionOperator>(op.GetString(), true, out var opVal))
+                                cond.Operator = opVal;
+                            if (c.TryGetProperty("value", out var v))
+                                cond.Value = v.GetDecimal();
+                            if (c.TryGetProperty("period", out var p) && p.ValueKind == JsonValueKind.Number)
+                                cond.Period = p.GetInt32();
+                            tg.Conditions.Conditions.Add(cond);
+                        }
+                    }
+
+                    if (g.TryGetProperty("actions", out var actions))
+                    {
+                        foreach (var a in actions.EnumerateArray())
+                        {
+                            var action = new TradeAction();
+                            if (a.TryGetProperty("actionType", out var at) && Enum.TryParse<TradeActionType>(at.GetString(), true, out var atVal))
+                                action.ActionType = atVal;
+                            if (a.TryGetProperty("side", out var s) && Enum.TryParse<TradeSide>(s.GetString(), true, out var sVal))
+                                action.Side = sVal;
+                            if (a.TryGetProperty("quantityType", out var qt) && Enum.TryParse<QuantityType>(qt.GetString(), true, out var qtVal))
+                                action.QuantityType = qtVal;
+                            if (a.TryGetProperty("quantity", out var q))
+                                action.Quantity = q.GetDecimal();
+                            if (a.TryGetProperty("limitPrice", out var lp) && lp.ValueKind == JsonValueKind.Number)
+                                action.LimitPrice = lp.GetDecimal();
+                            if (a.TryGetProperty("stopPrice", out var sp) && sp.ValueKind == JsonValueKind.Number)
+                                action.StopPrice = sp.GetDecimal();
+                            tg.Actions.Add(action);
+                        }
+                    }
+
+                    if (tg.Conditions.Conditions.Count > 0 && tg.Actions.Count > 0)
+                        result.TriggerGroups.Add(tg);
                 }
             }
 
-            if (root.TryGetProperty("actions", out var actions))
-            {
-                foreach (var a in actions.EnumerateArray())
-                {
-                    var action = new TradeAction();
-                    if (a.TryGetProperty("actionType", out var at) && Enum.TryParse<TradeActionType>(at.GetString(), true, out var atVal))
-                        action.ActionType = atVal;
-                    if (a.TryGetProperty("side", out var s) && Enum.TryParse<TradeSide>(s.GetString(), true, out var sVal))
-                        action.Side = sVal;
-                    if (a.TryGetProperty("quantityType", out var qt) && Enum.TryParse<QuantityType>(qt.GetString(), true, out var qtVal))
-                        action.QuantityType = qtVal;
-                    if (a.TryGetProperty("quantity", out var q))
-                        action.Quantity = q.GetDecimal();
-                    if (a.TryGetProperty("limitPrice", out var lp) && lp.ValueKind == JsonValueKind.Number)
-                        action.LimitPrice = lp.GetDecimal();
-                    if (a.TryGetProperty("stopPrice", out var sp) && sp.ValueKind == JsonValueKind.Number)
-                        action.StopPrice = sp.GetDecimal();
-                    result.Actions.Add(action);
-                }
-            }
-
-            return result.Conditions.Count > 0 && result.Actions.Count > 0 ? result : null;
+            return result.TriggerGroups.Count > 0 ? result : null;
         }
         catch
         {
@@ -224,8 +249,6 @@ public class StrategyBuilderTool : DaisiToolBase
     internal class ParsedStrategy
     {
         public string? Name { get; set; }
-        public LogicGroupType LogicGroup { get; set; } = LogicGroupType.And;
-        public List<TriggerCondition> Conditions { get; set; } = new();
-        public List<TradeAction> Actions { get; set; } = new();
+        public List<TriggerGroup> TriggerGroups { get; set; } = new();
     }
 }

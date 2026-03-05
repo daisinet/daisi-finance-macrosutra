@@ -265,6 +265,17 @@
     color: rgba(0,0,0,0.4);
 }
 
+.canvas-condition-drop-target {
+    border-radius: 8px;
+    transition: outline-color 0.2s, background-color 0.2s;
+    outline: 2px solid transparent;
+}
+
+.canvas-condition-drop-target.drag-over {
+    outline-color: var(--mud-palette-primary);
+    background-color: rgba(26,115,232,0.05);
+}
+
 /* Condition group colors by depth */
 .condition-group-depth-0 { border-left: 3px solid var(--mud-palette-primary); }
 .condition-group-depth-1 { border-left: 3px solid var(--mud-palette-secondary); }

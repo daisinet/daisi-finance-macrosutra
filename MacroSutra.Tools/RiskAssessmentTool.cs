@@ -58,16 +58,19 @@ public class RiskAssessmentTool : DaisiToolBase
             contextBuilder.AppendLine($"Strategy: {strategy.Name}");
             contextBuilder.AppendLine($"Description: {strategy.Description}");
             contextBuilder.AppendLine($"Symbols: {string.Join(", ", strategy.Symbols)}");
-            contextBuilder.AppendLine($"Logic: {strategy.LogicGroup}");
             contextBuilder.AppendLine($"Active: {strategy.IsActive}");
 
-            contextBuilder.AppendLine("\nConditions:");
-            foreach (var c in strategy.Conditions)
-                contextBuilder.AppendLine($"  - {c.ConditionType} {c.Operator} {c.Value}{(c.Period.HasValue ? $" (period: {c.Period})" : "")}");
-
-            contextBuilder.AppendLine("\nActions:");
-            foreach (var a in strategy.Actions)
-                contextBuilder.AppendLine($"  - {a.ActionType} {a.Side} {a.Quantity} {a.QuantityType}{(a.LimitPrice.HasValue ? $" limit: {a.LimitPrice}" : "")}{(a.StopPrice.HasValue ? $" stop: {a.StopPrice}" : "")}");
+            contextBuilder.AppendLine($"\nTrigger Groups: {strategy.TriggerGroups.Count}");
+            foreach (var tg in strategy.TriggerGroups)
+            {
+                contextBuilder.AppendLine($"\n  Group: {tg.Name} (Logic: {tg.Conditions.Logic})");
+                contextBuilder.AppendLine("  Conditions:");
+                foreach (var c in tg.Conditions.Conditions)
+                    contextBuilder.AppendLine($"    - {c.ConditionType} {c.Operator} {c.Value}{(c.Period.HasValue ? $" (period: {c.Period})" : "")}");
+                contextBuilder.AppendLine("  Actions:");
+                foreach (var a in tg.Actions)
+                    contextBuilder.AppendLine($"    - {a.ActionType} {a.Side} {a.Quantity} {a.QuantityType}{(a.LimitPrice.HasValue ? $" limit: {a.LimitPrice}" : "")}{(a.StopPrice.HasValue ? $" stop: {a.StopPrice}" : "")}");
+            }
 
             // Add performance data if available
             try

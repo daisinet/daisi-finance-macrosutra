@@ -64,24 +64,20 @@ public class CommunityService(
             Name = $"{source.Name} (Fork)",
             Description = source.Description,
             Symbols = new List<string>(source.Symbols),
-            LogicGroup = source.LogicGroup,
-            Conditions = source.Conditions.Select(c => new TriggerCondition
+            TriggerGroups = source.TriggerGroups.Select(tg => new TriggerGroup
             {
-                ConditionId = Guid.NewGuid().ToString("N")[..8],
-                ConditionType = c.ConditionType,
-                Operator = c.Operator,
-                Value = c.Value,
-                Period = c.Period
-            }).ToList(),
-            Actions = source.Actions.Select(a => new TradeAction
-            {
-                ActionId = Guid.NewGuid().ToString("N")[..8],
-                ActionType = a.ActionType,
-                Side = a.Side,
-                Quantity = a.Quantity,
-                QuantityType = a.QuantityType,
-                LimitPrice = a.LimitPrice,
-                StopPrice = a.StopPrice
+                Name = tg.Name, Interval = tg.Interval,
+                Conditions = CloneConditionGroup(tg.Conditions),
+                Actions = tg.Actions.Select(a => new TradeAction
+                {
+                    ActionId = Guid.NewGuid().ToString("N")[..8],
+                    ActionType = a.ActionType,
+                    Side = a.Side,
+                    Quantity = a.Quantity,
+                    QuantityType = a.QuantityType,
+                    LimitPrice = a.LimitPrice,
+                    StopPrice = a.StopPrice
+                }).ToList()
             }).ToList(),
             SizingMode = source.SizingMode,
             Visibility = StrategyVisibility.Private,
@@ -249,4 +245,18 @@ public class CommunityService(
         stats.ForkCount++;
         await cosmo.UpsertCommunityStatsAsync(stats);
     }
+
+    private static ConditionGroup CloneConditionGroup(ConditionGroup source) => new()
+    {
+        Logic = source.Logic,
+        Conditions = source.Conditions.Select(c => new TriggerCondition
+        {
+            ConditionId = Guid.NewGuid().ToString("N")[..8],
+            ConditionType = c.ConditionType,
+            Operator = c.Operator,
+            Value = c.Value,
+            Period = c.Period
+        }).ToList(),
+        ChildGroups = source.ChildGroups.Select(CloneConditionGroup).ToList()
+    };
 }

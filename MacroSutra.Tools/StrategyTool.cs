@@ -72,8 +72,7 @@ public class StrategyTool : DaisiToolBase
         {
             s.id, s.Name, s.Description, s.IsActive,
             Symbols = s.Symbols,
-            ConditionCount = s.Conditions?.Count ?? 0,
-            ActionCount = s.Actions?.Count ?? 0,
+            TriggerGroupCount = s.TriggerGroups.Count,
             s.LastEvaluatedUtc, s.LastTriggeredUtc
         });
 
@@ -133,8 +132,7 @@ public class StrategyTool : DaisiToolBase
         var output = templates.Select(t => new
         {
             t.Id, t.Name, t.Description, t.Category,
-            ConditionCount = t.Conditions?.Count ?? 0,
-            ActionCount = t.Actions?.Count ?? 0
+            TriggerGroupCount = t.TriggerGroups.Count
         });
 
         return new ToolResult

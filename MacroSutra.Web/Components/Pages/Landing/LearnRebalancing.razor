@@ -1,0 +1,54 @@
+@page "/learn/rebalancing"
+@layout MacroSutra.Web.Components.Layout.LandingLayout
+
+<PageTitle>MacroSutra - Portfolio Rebalancing Guide</PageTitle>
+
+<section class="landing-section">
+    <div class="landing-container">
+        <h1>Portfolio Rebalancing</h1>
+        <p>Define target allocations for your portfolio, detect drift from those targets, and execute rebalancing trades to bring your portfolio back in line.</p>
+
+        <h2 id="targets" class="mt-4">Setting Up Rebalance Targets</h2>
+        <ol>
+            <li>Navigate to <strong>Portfolio &rarr; Rebalance</strong> in the sidebar.</li>
+            <li>Click <strong>New Target</strong>.</li>
+            <li>Give it a name (e.g., "60/40 Portfolio"), select a brokerage account, and set a <strong>drift threshold</strong> (default: 5%).</li>
+            <li>Add allocation targets &mdash; each one specifies a symbol and a target percentage. Allocations should sum to 100%.</li>
+            <li>Click <strong>Create</strong>.</li>
+        </ol>
+
+        <h2 id="drift" class="mt-4">Understanding Drift</h2>
+        <p>Drift is the difference between a symbol's actual portfolio weight and its target weight. For example:</p>
+        <ul>
+            <li>If VTI should be 60% of your portfolio but has grown to 72%, the drift is <strong>+12%</strong>.</li>
+            <li>If BND should be 40% but has shrunk to 28%, the drift is <strong>-12%</strong>.</li>
+        </ul>
+        <p>MacroSutra flags the portfolio as needing rebalancing when any symbol's drift exceeds the configured threshold.</p>
+
+        <h2 id="analysis" class="mt-4">Running an Analysis</h2>
+        <p>Click <strong>Analyze</strong> on a rebalance target to see:</p>
+        <ul>
+            <li><strong>Total Portfolio Value</strong> &mdash; Sum of all position market values.</li>
+            <li><strong>Per-Symbol Drift</strong> &mdash; Actual vs. target percentage and the dollar amount to trade to reach the target.</li>
+            <li><strong>Needs Rebalancing</strong> &mdash; Whether any drift exceeds your threshold.</li>
+        </ul>
+
+        <h2 id="executing" class="mt-4">Executing a Rebalance</h2>
+        <p>Click <strong>Execute Rebalance</strong> to place market orders that bring each symbol back to its target weight:</p>
+        <ul>
+            <li>Overweight positions are sold.</li>
+            <li>Underweight positions are bought.</li>
+            <li>Only symbols with drift above the threshold are traded.</li>
+        </ul>
+        <p>Each trade is recorded on the Trades page with a note indicating it was a rebalance trade.</p>
+
+        <h2 id="api" class="mt-4">SDK &amp; API</h2>
+<pre><code>// Analyze drift
+var analysis = await client.Portfolio.AnalyzeRebalanceAsync(targetId);
+
+// Execute rebalance orders
+var trades = await client.Portfolio.ExecuteRebalanceAsync(targetId);</code></pre>
+
+        <p class="mt-4"><a href="/learn">&larr; Back to Learn</a></p>
+    </div>
+</section>

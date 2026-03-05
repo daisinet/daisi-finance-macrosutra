@@ -1,0 +1,105 @@
+@page "/tax-loss-harvesting"
+
+<PageTitle>Tax-Loss Harvesting — MacroSutra</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Tax-Loss Harvesting</MudText>
+
+<MudAlert Severity="Severity.Warning" Class="mb-4">
+    <strong>Disclaimer:</strong> This analysis is for informational purposes only and does not constitute tax advice.
+    Consult a qualified tax professional before making any tax-related investment decisions.
+    Estimated tax benefit assumes a 20% capital gains rate.
+</MudAlert>
+
+<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="RunAnalysis" Disabled="@loading" Class="mb-4">
+    @if (loading) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-1" /> }
+    Analyze Portfolio
+</MudButton>
+
+@if (report != null)
+{
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" md="4">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.subtitle2" Color="Color.Default">Total Estimated Loss</MudText>
+                <MudText Typo="Typo.h5" Color="Color.Error">@report.TotalEstimatedLoss.ToString("C")</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.subtitle2" Color="Color.Default">Potential Tax Benefit</MudText>
+                <MudText Typo="Typo.h5" Color="Color.Success">@report.TotalEstimatedTaxBenefit.ToString("C")</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.subtitle2" Color="Color.Default">Candidates</MudText>
+                <MudText Typo="Typo.h5">@report.Candidates.Count</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudTable Items="@report.Candidates" Hover="true" Striped="true" Dense="true">
+        <HeaderContent>
+            <MudTh>Symbol</MudTh>
+            <MudTh>Qty</MudTh>
+            <MudTh>Avg Cost</MudTh>
+            <MudTh>Current Price</MudTh>
+            <MudTh>Unrealized Loss</MudTh>
+            <MudTh>Est. Tax Benefit</MudTh>
+            <MudTh>Wash Sale Risk</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd><strong>@context.Symbol</strong></MudTd>
+            <MudTd>@context.Quantity</MudTd>
+            <MudTd>@context.AverageCost.ToString("C")</MudTd>
+            <MudTd>@context.CurrentPrice.ToString("C")</MudTd>
+            <MudTd><MudText Color="Color.Error">@context.UnrealizedLoss.ToString("C")</MudText></MudTd>
+            <MudTd>
+                @if (context.WashSaleRisk)
+                {
+                    <MudText Color="Color.Warning">$0 (wash sale)</MudText>
+                }
+                else
+                {
+                    <MudText Color="Color.Success">@context.EstimatedTaxBenefit.ToString("C")</MudText>
+                }
+            </MudTd>
+            <MudTd>
+                @if (context.WashSaleRisk)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">Yes</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success">No</MudChip>
+                }
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+else if (!loading)
+{
+    <MudAlert Severity="Severity.Info">
+        Click "Analyze Portfolio" to scan your positions for tax-loss harvesting opportunities.
+    </MudAlert>
+}
+
+@code {
+    [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
+    [Inject] private IDataProvider Data { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+
+    private TaxLossHarvestingReport? report;
+    private bool loading;
+
+    private async Task RunAnalysis()
+    {
+        loading = true;
+        try
+        {
+            report = await Data.GetTaxLossHarvestingReportAsync(AccountId);
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        finally { loading = false; }
+    }
+}

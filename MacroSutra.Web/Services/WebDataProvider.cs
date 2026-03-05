@@ -1,7 +1,9 @@
 using Daisi.SDK.Clients.V1.Orc;
 using Daisi.Protos.V1;
+using MacroSutra.Brokers;
 using MacroSutra.Core.Enums;
 using MacroSutra.Core.Models;
+using MacroSutra.Core.Models.Options;
 using MacroSutra.Services;
 using MacroSutra.UI.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -239,4 +241,146 @@ public class WebDataProvider(
 
     public async Task<List<LeaderboardEntry>> GetLeaderboardAsync(string sortBy = "sharpe", int limit = 25) =>
         await communityService.GetLeaderboardAsync(sortBy, limit);
+
+    // Trade export
+    public async Task<byte[]> ExportTradesCsvAsync(string accountId, string? symbol = null, string? strategyId = null)
+    {
+        var exportService = serviceProvider.GetRequiredService<TradeExportService>();
+        return await exportService.ExportCsvAsync(accountId, symbol, strategyId);
+    }
+
+    public async Task<byte[]> ExportTradesPdfAsync(string accountId, string? symbol = null, string? strategyId = null)
+    {
+        var exportService = serviceProvider.GetRequiredService<TradeExportService>();
+        return await exportService.ExportPdfAsync(accountId, symbol, strategyId);
+    }
+
+    // Historical market data
+    public async Task<List<OhlcvBar>> GetHistoricalBarsAsync(string symbol, DateOnly from, DateOnly to, string timeFrame = "1D")
+    {
+        var marketData = serviceProvider.GetRequiredService<MarketDataService>();
+        var barTimeFrame = Enum.TryParse<Core.Enums.BarTimeFrame>(timeFrame, true, out var tf) ? tf : Core.Enums.BarTimeFrame.Day;
+        return await marketData.GetHistoricalBarsAsync(symbol, from, to, barTimeFrame);
+    }
+
+    // DCA schedules
+    public async Task<List<DcaSchedule>> GetDcaSchedulesAsync(string accountId)
+    {
+        var dcaService = serviceProvider.GetRequiredService<DcaService>();
+        return await dcaService.GetSchedulesAsync(accountId);
+    }
+
+    public async Task<DcaSchedule?> GetDcaScheduleAsync(string id, string accountId)
+    {
+        var dcaService = serviceProvider.GetRequiredService<DcaService>();
+        return await dcaService.GetScheduleAsync(id, accountId);
+    }
+
+    public async Task<DcaSchedule> CreateDcaScheduleAsync(DcaSchedule schedule)
+    {
+        var dcaService = serviceProvider.GetRequiredService<DcaService>();
+        return await dcaService.CreateScheduleAsync(schedule);
+    }
+
+    public async Task<DcaSchedule> UpdateDcaScheduleAsync(DcaSchedule schedule)
+    {
+        var dcaService = serviceProvider.GetRequiredService<DcaService>();
+        return await dcaService.UpdateScheduleAsync(schedule);
+    }
+
+    public async Task DeleteDcaScheduleAsync(string id, string accountId)
+    {
+        var dcaService = serviceProvider.GetRequiredService<DcaService>();
+        await dcaService.DeleteScheduleAsync(id, accountId);
+    }
+
+    public async Task<DcaSchedule> ActivateDcaScheduleAsync(string id, string accountId)
+    {
+        var dcaService = serviceProvider.GetRequiredService<DcaService>();
+        var schedule = await dcaService.GetScheduleAsync(id, accountId)
+            ?? throw new InvalidOperationException("DCA schedule not found.");
+        await dcaService.ActivateScheduleAsync(schedule);
+        return schedule;
+    }
+
+    public async Task<DcaSchedule> DeactivateDcaScheduleAsync(string id, string accountId)
+    {
+        var dcaService = serviceProvider.GetRequiredService<DcaService>();
+        var schedule = await dcaService.GetScheduleAsync(id, accountId)
+            ?? throw new InvalidOperationException("DCA schedule not found.");
+        await dcaService.DeactivateScheduleAsync(schedule);
+        return schedule;
+    }
+
+    // Portfolio rebalancing
+    public async Task<List<RebalanceTarget>> GetRebalanceTargetsAsync(string accountId)
+    {
+        var rebalanceService = serviceProvider.GetRequiredService<RebalanceService>();
+        return await rebalanceService.GetTargetsAsync(accountId);
+    }
+
+    public async Task<RebalanceTarget?> GetRebalanceTargetAsync(string id, string accountId)
+    {
+        var rebalanceService = serviceProvider.GetRequiredService<RebalanceService>();
+        return await rebalanceService.GetTargetAsync(id, accountId);
+    }
+
+    public async Task<RebalanceTarget> CreateRebalanceTargetAsync(RebalanceTarget target)
+    {
+        var rebalanceService = serviceProvider.GetRequiredService<RebalanceService>();
+        return await rebalanceService.CreateTargetAsync(target);
+    }
+
+    public async Task<RebalanceTarget> UpdateRebalanceTargetAsync(RebalanceTarget target)
+    {
+        var rebalanceService = serviceProvider.GetRequiredService<RebalanceService>();
+        return await rebalanceService.UpdateTargetAsync(target);
+    }
+
+    public async Task DeleteRebalanceTargetAsync(string id, string accountId)
+    {
+        var rebalanceService = serviceProvider.GetRequiredService<RebalanceService>();
+        await rebalanceService.DeleteTargetAsync(id, accountId);
+    }
+
+    public async Task<RebalanceAnalysis> AnalyzeRebalanceAsync(string targetId, string accountId)
+    {
+        var rebalanceService = serviceProvider.GetRequiredService<RebalanceService>();
+        return await rebalanceService.AnalyzeAsync(targetId, accountId);
+    }
+
+    public async Task<List<Trade>> ExecuteRebalanceAsync(string targetId, string accountId)
+    {
+        var rebalanceService = serviceProvider.GetRequiredService<RebalanceService>();
+        return await rebalanceService.ExecuteRebalanceAsync(targetId, accountId);
+    }
+
+    // Tax-loss harvesting
+    public async Task<TaxLossHarvestingReport> GetTaxLossHarvestingReportAsync(string accountId, string? brokerageAccountId = null)
+    {
+        var tlhService = serviceProvider.GetRequiredService<TaxLossHarvestingService>();
+        return await tlhService.AnalyzeAsync(accountId, brokerageAccountId);
+    }
+
+    // Options
+    public async Task<OptionsChain> GetOptionsChainAsync(string accountId, string brokerageAccountId, string underlyingSymbol, DateOnly? expiration = null)
+    {
+        var account = await portfolioService.GetBrokerageAccountAsync(brokerageAccountId, accountId)
+            ?? throw new InvalidOperationException("Brokerage account not found.");
+        var provider = serviceProvider.GetRequiredService<BrokerageProviderFactory>().GetProvider(account.Provider);
+        return await provider.GetOptionsChainAsync(account.CredentialData, underlyingSymbol, expiration);
+    }
+
+    public async Task<Trade> PlaceOptionsOrderAsync(Trade trade)
+    {
+        trade = await tradeService.RecordTradeAsync(trade);
+        var account = await portfolioService.GetBrokerageAccountAsync(trade.BrokerageAccountId!, trade.AccountId)
+            ?? throw new InvalidOperationException("Brokerage account not found.");
+        var provider = serviceProvider.GetRequiredService<BrokerageProviderFactory>().GetProvider(account.Provider);
+        var externalId = await provider.PlaceOptionsOrderAsync(account.CredentialData, trade);
+        trade.ExternalOrderId = externalId;
+        trade.Status = TradeStatus.Submitted;
+        await tradeService.UpdateTradeStatusAsync(trade.id, trade.AccountId, TradeStatus.Submitted);
+        return trade;
+    }
 }

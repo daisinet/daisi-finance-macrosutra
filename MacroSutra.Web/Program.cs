@@ -45,7 +45,8 @@ builder.Services.AddSingleton<StrategyTemplateService>();
 builder.Services.AddSingleton<MarketDataService>();
 builder.Services.AddScoped<ConditionEvaluator>();
 builder.Services.AddScoped<TradeExecutionService>();
-builder.Services.AddHostedService<StrategyEvaluationService>();
+builder.Services.AddSingleton<StrategyEvaluationService>();
+builder.Services.AddHostedService<StrategyEvaluationService>(sp => sp.GetRequiredService<StrategyEvaluationService>());
 builder.Services.AddHostedService<OrderStatusTracker>();
 
 // Phase 4: Backtesting engine
@@ -69,6 +70,13 @@ builder.Services.AddHttpClient("FCM", c => c.Timeout = TimeSpan.FromSeconds(10))
 // Phase 8: Strategy performance tracking
 builder.Services.AddScoped<StrategyPerformanceService>();
 
+// Phase 12: Advanced trading features
+builder.Services.AddScoped<TradeExportService>();
+builder.Services.AddScoped<DcaService>();
+builder.Services.AddScoped<RebalanceService>();
+builder.Services.AddScoped<TaxLossHarvestingService>();
+builder.Services.AddHostedService<DcaExecutionService>();
+
 // Phase 8: Real-time events
 builder.Services.AddSingleton<IStrategyEventPublisher, SignalRStrategyEventPublisher>();
 
@@ -84,7 +92,7 @@ builder.Services.AddSingleton<PublicComBrokerageProvider>();
 builder.Services.AddSingleton<InteractiveBrokersBrokerageProvider>();
 builder.Services.AddSingleton<MoomooBrokerageProvider>();
 builder.Services.AddSingleton<RobinhoodBrokerageProvider>();
-builder.Services.AddScoped<BrokerageProviderFactory>();
+builder.Services.AddSingleton<BrokerageProviderFactory>();
 builder.Services.AddHttpClient("Webull", c => c.Timeout = TimeSpan.FromSeconds(30));
 builder.Services.AddHttpClient("Schwab", c => c.Timeout = TimeSpan.FromSeconds(30));
 builder.Services.AddHttpClient("Tradier", c => c.Timeout = TimeSpan.FromSeconds(30));

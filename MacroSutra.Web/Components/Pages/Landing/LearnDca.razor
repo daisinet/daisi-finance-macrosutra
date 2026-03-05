@@ -1,0 +1,64 @@
+@page "/learn/dca"
+@layout MacroSutra.Web.Components.Layout.LandingLayout
+
+<PageTitle>MacroSutra - Dollar-Cost Averaging Guide</PageTitle>
+
+<section class="landing-section">
+    <div class="landing-container">
+        <h1>Dollar-Cost Averaging (DCA)</h1>
+        <p>DCA is an investment strategy that automatically buys a fixed dollar amount of a stock on a recurring schedule, regardless of price. Over time this smooths out volatility and removes the guesswork of market timing.</p>
+
+        <h2 id="how-it-works" class="mt-4">How It Works</h2>
+        <ol>
+            <li>You create a <strong>DCA Schedule</strong> specifying a symbol, dollar amount, frequency, and brokerage account.</li>
+            <li>MacroSutra's background service checks for due schedules every 60 seconds during US market hours (9:30 AM &ndash; 4:00 PM ET).</li>
+            <li>When a schedule is due, the service places a <strong>market buy order</strong> for the configured dollar amount, calculates share quantity based on the current price, and records the trade.</li>
+            <li>After execution, the schedule's <code>NextExecutionUtc</code> is advanced to the next occurrence, and <code>TotalInvested</code> and <code>TotalExecutions</code> are updated.</li>
+        </ol>
+
+        <h2 id="frequencies" class="mt-4">Frequencies</h2>
+        <ul>
+            <li><strong>Daily</strong> &mdash; Buys every trading day at the configured time.</li>
+            <li><strong>Weekly</strong> &mdash; Buys on a specific day of the week (default: Monday).</li>
+            <li><strong>Bi-Weekly</strong> &mdash; Buys every two weeks on the configured day.</li>
+            <li><strong>Monthly</strong> &mdash; Buys on a specific day of the month (e.g., the 1st or 15th). If the day exceeds the month's length (e.g., 31 in February), it clamps to the last day.</li>
+        </ul>
+
+        <h2 id="creating" class="mt-4">Creating a DCA Schedule</h2>
+        <ol>
+            <li>Navigate to <strong>Trading &rarr; DCA</strong> in the sidebar.</li>
+            <li>Click <strong>New DCA Schedule</strong>.</li>
+            <li>Fill in the name, symbol, brokerage account, frequency, and investment amount.</li>
+            <li>Set the execution time (UTC) and day of week/month as needed.</li>
+            <li>Click <strong>Create</strong>. The schedule is active immediately.</li>
+        </ol>
+        <p>You can <strong>pause</strong> a schedule (Deactivate) without deleting it, and <strong>resume</strong> it later (Activate).</p>
+
+        <h2 id="tracking" class="mt-4">Tracking Performance</h2>
+        <p>The DCA page shows each schedule's:</p>
+        <ul>
+            <li><strong>Total Invested</strong> &mdash; Cumulative dollar amount invested.</li>
+            <li><strong>Total Executions</strong> &mdash; Number of buys placed.</li>
+            <li><strong>Last Executed</strong> &mdash; When the most recent buy occurred.</li>
+            <li><strong>Next Execution</strong> &mdash; When the next buy is scheduled.</li>
+        </ul>
+        <p>Individual DCA trades appear on the standard <strong>Trades</strong> page with notes indicating they were placed by a DCA schedule.</p>
+
+        <h2 id="api" class="mt-4">SDK &amp; API</h2>
+<pre><code>// List all DCA schedules
+var schedules = await client.Dca.GetSchedulesAsync();
+
+// Create a new schedule
+var schedule = await client.Dca.CreateScheduleAsync(new {
+    Name = "Weekly SPY",
+    Symbol = "SPY",
+    BrokerageAccountId = "bra-123",
+    Frequency = "Weekly",
+    DayOfWeek = "Monday",
+    InvestmentAmount = 100.00m,
+    ExecutionTime = "14:30"
+});</code></pre>
+
+        <p class="mt-4"><a href="/learn">&larr; Back to Learn</a></p>
+    </div>
+</section>

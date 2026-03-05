@@ -1,4 +1,5 @@
 using MacroSutra.Core.Enums;
+using MacroSutra.Core.Models.Options;
 
 namespace MacroSutra.Core.Models;
 
@@ -35,6 +36,12 @@ public class Trade
     public string? ExternalOrderId { get; set; }
 
     public string? Notes { get; set; }
+
+    /// <summary>
+    /// Option-specific details. Null for equity/ETF trades.
+    /// </summary>
+    public OptionDetails? OptionDetails { get; set; }
+
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedUtc { get; set; }
     public DateTime? FilledUtc { get; set; }

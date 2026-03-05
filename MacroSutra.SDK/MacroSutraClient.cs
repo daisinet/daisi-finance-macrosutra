@@ -25,6 +25,8 @@ public class MacroSutraClient : IDisposable
     public CommunityClient Community { get; }
     public SubscriptionClient Subscriptions { get; }
     public PushClient Push { get; }
+    public MarketDataClient MarketData { get; }
+    public DcaClient Dca { get; }
 
     public MacroSutraClient(string baseUrl, string userClientKey)
     {
@@ -42,6 +44,8 @@ public class MacroSutraClient : IDisposable
         Community = new CommunityClient(_http);
         Subscriptions = new SubscriptionClient(_http);
         Push = new PushClient(_http);
+        MarketData = new MarketDataClient(_http);
+        Dca = new DcaClient(_http);
     }
 
     public MacroSutraClient(HttpClient httpClient)
@@ -55,6 +59,8 @@ public class MacroSutraClient : IDisposable
         Community = new CommunityClient(_http);
         Subscriptions = new SubscriptionClient(_http);
         Push = new PushClient(_http);
+        MarketData = new MarketDataClient(_http);
+        Dca = new DcaClient(_http);
     }
 
     public void Dispose()

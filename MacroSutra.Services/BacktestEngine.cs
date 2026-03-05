@@ -11,9 +11,28 @@ public class BacktestEngine(ConditionEvaluator evaluator)
 {
     /// <summary>
     /// Runs a backtest simulation for a strategy against historical bars.
+    /// Single-interval overload — all trigger groups evaluate against the same bars.
     /// </summary>
     public BacktestResult Run(TradingStrategy strategy, string symbol,
         List<OhlcvBar> bars, decimal initialCapital,
+        decimal slippageBps = 0, decimal commissionPerTrade = 0)
+    {
+        var barsByInterval = new Dictionary<BarTimeFrame, List<OhlcvBar>>();
+        foreach (var tg in strategy.TriggerGroups)
+            barsByInterval.TryAdd(tg.Interval, bars);
+        if (barsByInterval.Count == 0)
+            barsByInterval[BarTimeFrame.Day] = bars;
+
+        return Run(strategy, symbol, barsByInterval, initialCapital, slippageBps, commissionPerTrade);
+    }
+
+    /// <summary>
+    /// Runs a backtest simulation with per-interval bar data.
+    /// Each trigger group evaluates against bars at its configured interval.
+    /// The finest-grained bars drive the main timeline for equity tracking.
+    /// </summary>
+    public BacktestResult Run(TradingStrategy strategy, string symbol,
+        Dictionary<BarTimeFrame, List<OhlcvBar>> barsByInterval, decimal initialCapital,
         decimal slippageBps = 0, decimal commissionPerTrade = 0)
     {
         var result = new BacktestResult
@@ -27,12 +46,23 @@ public class BacktestEngine(ConditionEvaluator evaluator)
             Status = BacktestStatus.Running
         };
 
-        if (bars.Count == 0)
+        // Use the finest-grained bars as the main timeline
+        var timelineBars = GetFinestBars(barsByInterval);
+        if (timelineBars.Count == 0)
         {
             result.Status = BacktestStatus.Completed;
             result.CompletedUtc = DateTime.UtcNow;
             result.Metrics = new BacktestMetrics { FinalEquity = initialCapital };
             return result;
+        }
+
+        // Build rolling price windows per interval
+        var closePricesByInterval = new Dictionary<BarTimeFrame, List<decimal>>();
+        var barIndexByInterval = new Dictionary<BarTimeFrame, int>();
+        foreach (var interval in barsByInterval.Keys)
+        {
+            closePricesByInterval[interval] = new List<decimal>();
+            barIndexByInterval[interval] = 0;
         }
 
         var cash = initialCapital;
@@ -44,23 +74,27 @@ public class BacktestEngine(ConditionEvaluator evaluator)
         // Current open position (null = flat)
         SimulatedTrade? openPosition = null;
 
-        // Build rolling price window for indicator calculations
-        var closePrices = new List<decimal>();
-
-        for (int i = 0; i < bars.Count; i++)
+        for (int i = 0; i < timelineBars.Count; i++)
         {
-            var bar = bars[i];
-            closePrices.Add(bar.Close);
+            var bar = timelineBars[i];
 
-            // Use up to last 50 closes for indicator calculations
-            var priceSlice = closePrices.Count > 50
-                ? closePrices.Skip(closePrices.Count - 50).ToArray()
-                : closePrices.ToArray();
+            // Advance each interval's price window up to the current timestamp
+            foreach (var (interval, intervalBars) in barsByInterval)
+            {
+                var idx = barIndexByInterval[interval];
+                var prices = closePricesByInterval[interval];
+                while (idx < intervalBars.Count && intervalBars[idx].Timestamp <= bar.Timestamp)
+                {
+                    prices.Add(intervalBars[idx].Close);
+                    idx++;
+                }
+                barIndexByInterval[interval] = idx;
+            }
 
-            // Compute daily change % from previous close
+            // Compute change % from previous timeline bar
             decimal dailyChangePercent = 0;
-            if (i > 0 && bars[i - 1].Close > 0)
-                dailyChangePercent = (bar.Close - bars[i - 1].Close) / bars[i - 1].Close * 100;
+            if (i > 0 && timelineBars[i - 1].Close > 0)
+                dailyChangePercent = (bar.Close - timelineBars[i - 1].Close) / timelineBars[i - 1].Close * 100;
 
             // Synthesize a MarketSnapshot from this bar
             var snapshot = new MarketSnapshot
@@ -71,44 +105,32 @@ public class BacktestEngine(ConditionEvaluator evaluator)
                 DailyHigh = bar.High,
                 DailyLow = bar.Low,
                 DailyChangePercent = dailyChangePercent,
-                PreviousClose = i > 0 ? bars[i - 1].Close : bar.Open,
+                PreviousClose = i > 0 ? timelineBars[i - 1].Close : bar.Open,
                 Timestamp = bar.Timestamp
             };
 
-            // Evaluate conditions — use recursive group if available, else flat
-            bool shouldTrigger;
-            var conditionResults = new List<(bool passed, decimal value, string conditionId)>();
-            if (strategy.RootConditionGroup != null)
+            // Evaluate each trigger group against its own interval's price history
+            var firedActions = new List<(string reason, List<TradeAction> actions)>();
+
+            foreach (var tg in strategy.TriggerGroups)
             {
+                var prices = closePricesByInterval.TryGetValue(tg.Interval, out var p) ? p : closePricesByInterval.Values.First();
+                var priceSlice = prices.Count > 50
+                    ? prices.Skip(prices.Count - 50).ToArray()
+                    : prices.ToArray();
+
                 var (groupTriggered, groupResults) = evaluator.EvaluateGroup(
-                    strategy.RootConditionGroup, snapshot, priceSlice, previousValues);
-                shouldTrigger = groupTriggered;
-                conditionResults = groupResults;
-            }
-            else
-            {
-                foreach (var condition in strategy.Conditions)
+                    tg.Conditions, snapshot, priceSlice, previousValues);
+                if (groupTriggered)
                 {
-                    var (triggered, currentValue) = evaluator.Evaluate(condition, snapshot, priceSlice, previousValues);
-                    conditionResults.Add((triggered, currentValue, condition.ConditionId));
+                    var reason = string.Join(", ", groupResults.Where(r => r.passed).Select(r => r.conditionId));
+                    firedActions.Add((reason, tg.Actions));
                 }
-
-                // Apply logic group (AND/OR)
-                shouldTrigger = strategy.LogicGroup switch
-                {
-                    LogicGroupType.And => conditionResults.Count > 0 && conditionResults.All(r => r.passed),
-                    LogicGroupType.Or => conditionResults.Any(r => r.passed),
-                    _ => false
-                };
             }
 
-            if (shouldTrigger)
+            foreach (var (firedConditions, actions) in firedActions)
             {
-                var firedConditions = string.Join(", ", conditionResults
-                    .Where(r => r.passed)
-                    .Select(r => r.conditionId));
-
-                foreach (var action in strategy.Actions)
+                foreach (var action in actions)
                 {
                     // Skip alert actions in backtest
                     if (action.ActionType == TradeActionType.Alert)
@@ -179,7 +201,7 @@ public class BacktestEngine(ConditionEvaluator evaluator)
         // If still holding a position at the end, close it at last bar's close
         if (openPosition != null)
         {
-            var lastBar = bars[^1];
+            var lastBar = timelineBars[^1];
             var exitPrice = lastBar.Close * (1 - slippageBps / 10000m);
             var proceeds = openPosition.Quantity * exitPrice - commissionPerTrade;
             cash += proceeds;
@@ -209,6 +231,15 @@ public class BacktestEngine(ConditionEvaluator evaluator)
         return result;
     }
 
+    /// <summary>
+    /// Returns the finest-grained (most bars) list from the dictionary.
+    /// </summary>
+    private static List<OhlcvBar> GetFinestBars(Dictionary<BarTimeFrame, List<OhlcvBar>> barsByInterval)
+    {
+        if (barsByInterval.Count == 0) return [];
+        return barsByInterval.OrderByDescending(kvp => kvp.Value.Count).First().Value;
+    }
+
     internal static BacktestMetrics ComputeMetrics(
         decimal initialCapital, decimal finalEquity, decimal maxDrawdownPercent,
         List<decimal> dailyEquities, List<SimulatedTrade> trades)
@@ -232,7 +263,7 @@ public class BacktestEngine(ConditionEvaluator evaluator)
 
             var grossProfit = winners.Sum(t => t.PnL ?? 0);
             var grossLoss = Math.Abs(losers.Sum(t => t.PnL ?? 0));
-            metrics.ProfitFactor = grossLoss > 0 ? grossProfit / grossLoss : grossProfit > 0 ? decimal.MaxValue : 0;
+            metrics.ProfitFactor = grossLoss > 0 ? grossProfit / grossLoss : grossProfit > 0 ? 9999.99m : 0;
 
             var returns = trades.Where(t => t.ReturnPercent.HasValue).Select(t => t.ReturnPercent!.Value).ToList();
             metrics.AverageTradeReturnPercent = returns.Count > 0 ? returns.Average() : 0;
