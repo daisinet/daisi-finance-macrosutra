@@ -1,0 +1,58 @@
+@* Read-only template detail dialog *@
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@Template.Name</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudChip T="string" Size="Size.Small" Color="Color.Info" Class="mb-2">@Template.Category</MudChip>
+        <MudText Typo="Typo.body1" Class="mb-4">@Template.Description</MudText>
+
+        <MudText Typo="Typo.subtitle1" Class="mb-2">Conditions (@Template.LogicGroup)</MudText>
+        @foreach (var condition in Template.Conditions)
+        {
+            <MudPaper Class="pa-2 mb-1" Outlined="true">
+                <div class="d-flex align-center gap-2">
+                    <MudIcon Icon="@ConditionWizardHelper.GetConditionTypeInfo(condition.ConditionType).Icon" Size="Size.Small" />
+                    <MudText Typo="Typo.body2">
+                        @ConditionWizardHelper.DescribeCondition(condition)
+                    </MudText>
+                    <span class="condition-badge-@ConditionWizardHelper.GetConditionColor(condition.ConditionType) px-2 py-1"
+                          style="border-radius: 4px; font-size: 0.7rem; font-weight: 600;">
+                        @ConditionWizardHelper.GetConditionTypeInfo(condition.ConditionType).Category
+                    </span>
+                </div>
+            </MudPaper>
+        }
+
+        <MudDivider Class="my-3" />
+
+        <MudText Typo="Typo.subtitle1" Class="mb-2">Actions</MudText>
+        @foreach (var action in Template.Actions)
+        {
+            <MudPaper Class="pa-2 mb-1" Outlined="true">
+                <div class="d-flex align-center gap-2">
+                    <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" Size="Size.Small" />
+                    <MudChip T="string" Size="Size.Small" Color="@(action.Side == TradeSide.Buy ? Color.Success : Color.Error)">
+                        @action.Side
+                    </MudChip>
+                    <MudText Typo="Typo.body2">
+                        @action.ActionType — @action.Quantity @action.QuantityType
+                    </MudText>
+                </div>
+            </MudPaper>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   Href="@($"/strategies/builder?template={Template.Id}")">Use This Template</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public StrategyTemplate Template { get; set; } = new();
+
+    private void Close() => MudDialog.Cancel();
+}

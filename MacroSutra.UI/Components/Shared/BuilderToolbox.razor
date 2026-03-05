@@ -1,0 +1,78 @@
+@* Left panel: draggable condition/action/group palette for the strategy builder *@
+
+<div class="builder-toolbox pa-3">
+    <MudText Typo="Typo.h6" Class="mb-3">Toolbox</MudText>
+
+    <MudExpansionPanels MultiExpansion="true">
+        @* Conditions *@
+        <MudExpansionPanel Text="Conditions" IsInitiallyExpanded="true">
+            @foreach (var group in ConditionWizardHelper.GetAllConditionTypes().GroupBy(t => t.Category))
+            {
+                <MudText Typo="Typo.overline" Class="mt-2 mb-1">@group.Key</MudText>
+                @foreach (var info in group)
+                {
+                    <MudPaper Class="pa-2 mb-1 toolbox-item" Outlined="true" Elevation="0"
+                              draggable="true"
+                              @ondragstart="@(() => OnDrag($"condition:{info.Type}"))">
+                        <div class="d-flex align-center gap-2">
+                            <MudIcon Icon="@info.Icon" Size="Size.Small" />
+                            <div>
+                                <MudText Typo="Typo.body2">@info.Name</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@info.Description</MudText>
+                            </div>
+                        </div>
+                    </MudPaper>
+                }
+            }
+        </MudExpansionPanel>
+
+        @* Actions *@
+        <MudExpansionPanel Text="Actions" IsInitiallyExpanded="true">
+            @foreach (var at in Enum.GetValues<TradeActionType>())
+            {
+                <MudPaper Class="pa-2 mb-1 toolbox-item" Outlined="true" Elevation="0"
+                          draggable="true"
+                          @ondragstart="@(() => OnDrag($"action:{at}"))">
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@GetActionIcon(at)" Size="Size.Small" />
+                        <MudText Typo="Typo.body2">@at</MudText>
+                    </div>
+                </MudPaper>
+            }
+        </MudExpansionPanel>
+
+        @* Logic Groups *@
+        <MudExpansionPanel Text="Logic Groups">
+            <MudPaper Class="pa-2 mb-1 toolbox-item" Outlined="true" Elevation="0"
+                      draggable="true"
+                      @ondragstart="@(() => OnDrag("group"))">
+                <div class="d-flex align-center gap-2">
+                    <MudIcon Icon="@Icons.Material.Filled.AccountTree" Size="Size.Small" />
+                    <div>
+                        <MudText Typo="Typo.body2">Condition Group</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">AND/OR logic block</MudText>
+                    </div>
+                </div>
+            </MudPaper>
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+</div>
+
+@code {
+    [Parameter] public EventCallback<string> OnDragPayload { get; set; }
+
+    private async Task OnDrag(string payload)
+    {
+        await OnDragPayload.InvokeAsync(payload);
+    }
+
+    private static string GetActionIcon(TradeActionType type) => type switch
+    {
+        TradeActionType.MarketOrder => Icons.Material.Filled.ShoppingCart,
+        TradeActionType.LimitOrder => Icons.Material.Filled.PriceCheck,
+        TradeActionType.StopOrder => Icons.Material.Filled.Block,
+        TradeActionType.StopLimitOrder => Icons.Material.Filled.DoNotDisturbOn,
+        TradeActionType.Alert => Icons.Material.Filled.NotificationsActive,
+        _ => Icons.Material.Filled.SwapHoriz
+    };
+}

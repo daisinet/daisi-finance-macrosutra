@@ -1,0 +1,74 @@
+@* Center panel: drop target canvas with conditions + actions zones *@
+
+<div class="builder-canvas pa-3">
+    @* Conditions Zone *@
+    <MudText Typo="Typo.h6" Class="mb-2">
+        <MudIcon Icon="@Icons.Material.Filled.FilterAlt" Size="Size.Small" Class="me-1" /> Conditions
+    </MudText>
+
+    <CanvasConditionGroup Group="RootGroup"
+                          Depth="0"
+                          LiveResults="LiveResults"
+                          DragPayload="DragPayload"
+                          DragPayloadChanged="DragPayloadChanged"
+                          EditCondition="EditCondition" />
+
+    <MudDivider Class="my-4" />
+
+    @* Actions Zone *@
+    <MudText Typo="Typo.h6" Class="mb-2">
+        <MudIcon Icon="@Icons.Material.Filled.FlashOn" Size="Size.Small" Class="me-1" /> Actions
+    </MudText>
+
+    <div class="canvas-drop-zone @(isActionDragOver ? "drag-over" : "")"
+         @ondrop="HandleActionDrop" @ondragover="HandleActionDragOver" @ondragover:preventDefault
+         @ondragleave="HandleActionDragLeave">
+        @if (Actions.Count == 0)
+        {
+            <div class="empty-zone py-4 text-center">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Drop actions here or click "Add Action" below
+                </MudText>
+            </div>
+        }
+        else
+        {
+            @foreach (var action in Actions)
+            {
+                <CanvasActionCard Action="action" OnRemove="@(() => Actions.Remove(action))" />
+            }
+        }
+    </div>
+
+    <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="AddAction" Size="Size.Small" Class="mt-2">
+        <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" /> Add Action
+    </MudButton>
+</div>
+
+@code {
+    [Parameter] public ConditionGroup RootGroup { get; set; } = new();
+    [Parameter] public List<TradeAction> Actions { get; set; } = new();
+    [Parameter] public List<ConditionResult>? LiveResults { get; set; }
+    [Parameter] public string? DragPayload { get; set; }
+    [Parameter] public EventCallback<string> DragPayloadChanged { get; set; }
+    [Parameter] public EventCallback<TriggerCondition> EditCondition { get; set; }
+
+    private bool isActionDragOver;
+
+    private void AddAction() => Actions.Add(new TradeAction());
+
+    private void HandleActionDragOver() => isActionDragOver = true;
+    private void HandleActionDragLeave() => isActionDragOver = false;
+
+    private void HandleActionDrop()
+    {
+        isActionDragOver = false;
+        if (string.IsNullOrEmpty(DragPayload)) return;
+
+        var (kind, value) = ConditionWizardHelper.ParseDragPayload(DragPayload);
+        if (kind == "action" && Enum.TryParse<TradeActionType>(value, out var actionType))
+        {
+            Actions.Add(new TradeAction { ActionType = actionType });
+        }
+    }
+}

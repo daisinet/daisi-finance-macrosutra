@@ -1,0 +1,129 @@
+@* Right panel: real-time strategy evaluation with auto-refresh *@
+@implements IDisposable
+
+<div class="builder-preview pa-3">
+    <MudText Typo="Typo.h6" Class="mb-3">
+        <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Class="me-1" /> Live Preview
+    </MudText>
+
+    @if (string.IsNullOrEmpty(StrategyId))
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+            Save the strategy first to enable live preview.
+        </MudAlert>
+    }
+    else
+    {
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="TestNow"
+                       Disabled="@testing" Size="Size.Small">
+                @if (testing)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-1" />
+                }
+                Test Now
+            </MudButton>
+            <MudSwitch T="bool" @bind-Value="autoRefresh" Color="Color.Secondary" Label="Auto (30s)" />
+        </MudStack>
+
+        @if (latestResult != null)
+        {
+            <MudAlert Severity="@(latestResult.WouldTrigger ? Severity.Success : Severity.Normal)"
+                      Dense="true" Class="mb-3">
+                @(latestResult.WouldTrigger ? "Would TRIGGER" : "Would NOT trigger")
+                — @latestResult.EvaluatedUtc.ToString("HH:mm:ss") UTC
+            </MudAlert>
+
+            @* Per-condition breakdown *@
+            @foreach (var cr in latestResult.Conditions)
+            {
+                <MudPaper Class="pa-2 mb-1" Outlined="true">
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@ConditionWizardHelper.GetConditionTypeInfo(cr.ConditionType).Icon" Size="Size.Small" />
+                        <MudText Typo="Typo.body2" Class="flex-grow-1">
+                            @cr.ConditionType: @cr.CurrentValue.ToString("N2")
+                            @ConditionWizardHelper.DescribeOperator(cr.Operator, cr.ConditionType)
+                            @cr.TargetValue.ToString("N2")
+                        </MudText>
+                        <MudChip T="string" Size="Size.Small" Color="@(cr.Passed ? Color.Success : Color.Error)">
+                            @(cr.Passed ? "Pass" : "Fail")
+                        </MudChip>
+                    </div>
+                </MudPaper>
+            }
+        }
+
+        @* Evaluation history *@
+        @if (history.Count > 0)
+        {
+            <MudText Typo="Typo.subtitle2" Class="mt-4 mb-2">Recent Evaluations</MudText>
+            <MudTimeline TimelinePosition="TimelinePosition.Start" Dense="true">
+                @foreach (var eval in history.TakeLast(5).Reverse())
+                {
+                    <MudTimelineItem Color="@(eval.WouldTrigger ? Color.Success : Color.Default)" Size="Size.Small">
+                        <MudText Typo="Typo.caption">
+                            @eval.EvaluatedUtc.ToString("HH:mm:ss") —
+                            @(eval.WouldTrigger ? "Trigger" : "No trigger")
+                            (@eval.Conditions.Count(c => c.Passed)/@eval.Conditions.Count pass)
+                        </MudText>
+                    </MudTimelineItem>
+                }
+            </MudTimeline>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public string? StrategyId { get; set; }
+    [Parameter] public string AccountId { get; set; } = "";
+    [Parameter] public EventCallback<StrategyEvaluationResult> OnResultReceived { get; set; }
+    [Inject] private IDataProvider Data { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+
+    private StrategyEvaluationResult? latestResult;
+    private List<StrategyEvaluationResult> history = new();
+    private bool testing;
+    private bool autoRefresh;
+    private Timer? refreshTimer;
+
+    protected override void OnParametersSet()
+    {
+        UpdateTimer();
+    }
+
+    private void UpdateTimer()
+    {
+        refreshTimer?.Dispose();
+        if (autoRefresh && !string.IsNullOrEmpty(StrategyId))
+        {
+            refreshTimer = new Timer(async _ => await InvokeAsync(TestNow), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+        }
+    }
+
+    private async Task TestNow()
+    {
+        if (string.IsNullOrEmpty(StrategyId) || string.IsNullOrEmpty(AccountId) || testing) return;
+
+        testing = true;
+        try
+        {
+            latestResult = await Data.EvaluateStrategyAsync(StrategyId, AccountId);
+            history.Add(latestResult);
+            await OnResultReceived.InvokeAsync(latestResult);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Preview failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            testing = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
+    }
+}

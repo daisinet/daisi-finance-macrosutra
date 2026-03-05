@@ -1,0 +1,78 @@
+@page "/learn/strategy-builder"
+@layout MacroSutra.Web.Components.Layout.LandingLayout
+
+<PageTitle>MacroSutra - Visual Strategy Builder Guide</PageTitle>
+
+<section class="landing-section">
+    <div class="landing-container">
+        <h1>Visual Strategy Builder</h1>
+        <p class="landing-hero-subtitle">Build trading strategies visually with drag-and-drop, guided wizards, and real-time preview.</p>
+
+        <h2>Overview</h2>
+        <p>
+            The Visual Strategy Builder provides a three-panel interface for creating trading strategies without needing to understand the underlying data model. Drag conditions and actions from the toolbox onto the canvas, use the wizard for guided setup, and preview results in real time.
+        </p>
+
+        <h2 class="mt-4">Getting Started</h2>
+        <ol>
+            <li>Navigate to <strong>Strategies &rarr; Visual Builder</strong> or click "Visual Builder" on the Strategies page.</li>
+            <li>Fill in the strategy header: name, description, symbols, sizing mode, and visibility.</li>
+            <li>Build your conditions using drag-and-drop or the "Add Condition" button.</li>
+            <li>Add actions that execute when conditions are met.</li>
+            <li>Save and test your strategy with the live preview panel.</li>
+        </ol>
+
+        <h2 class="mt-4">The Three Panels</h2>
+
+        <h3>Toolbox (Left)</h3>
+        <p>
+            The toolbox contains all available building blocks organized into three sections:
+        </p>
+        <ul>
+            <li><strong>Conditions</strong> &mdash; Market data (Price, Volume, % Change), Technical Indicators (Moving Average, RSI, MACD), and Time-Based (Time of Day, Day of Week).</li>
+            <li><strong>Actions</strong> &mdash; Market Order, Limit Order, Stop Order, Stop-Limit Order, and Alert.</li>
+            <li><strong>Logic Groups</strong> &mdash; AND/OR condition groups for compound logic. Groups can be nested up to 3 levels deep.</li>
+        </ul>
+        <p>Drag any item from the toolbox and drop it onto the canvas to add it to your strategy.</p>
+
+        <h3>Canvas (Center)</h3>
+        <p>
+            The canvas has two zones: <strong>Conditions</strong> and <strong>Actions</strong>. Conditions are organized in a tree structure using AND/OR logic groups. Each condition shows a compact summary with its type, operator, value, and optional period. Click any condition to edit it with the wizard.
+        </p>
+        <p>
+            Actions show the trade type, side (Buy/Sell), and quantity. Click to expand and edit inline.
+        </p>
+
+        <h3>Live Preview (Right)</h3>
+        <p>
+            For saved strategies, the preview panel evaluates your strategy against live market data. Each condition shows its current value, target, and pass/fail status. Enable auto-refresh for continuous 30-second updates. A timeline shows your last 5 evaluation results.
+        </p>
+
+        <h2 class="mt-4">Condition Wizard</h2>
+        <p>
+            The 4-step wizard guides you through creating a condition:
+        </p>
+        <ol>
+            <li><strong>What to monitor?</strong> &mdash; Choose from a visual grid of condition types grouped by category.</li>
+            <li><strong>How to compare?</strong> &mdash; Select an operator (&gt;, &lt;, =, crosses above/below) with context-appropriate options.</li>
+            <li><strong>Set target</strong> &mdash; Enter the target value. The input adapts to the condition type: number field for most, time picker for Time of Day, day selector for Day of Week.</li>
+            <li><strong>Review</strong> &mdash; See a natural language summary of your condition before adding it.</li>
+        </ol>
+
+        <h2 class="mt-4">Templates</h2>
+        <p>
+            The Template Gallery (<strong>Strategies &rarr; Templates</strong>) offers pre-built starter strategies and community-shared strategies. Browse by category, preview conditions and actions, then click "Use Template" to open it in the builder with everything pre-populated.
+        </p>
+        <p>
+            Community strategies can be forked directly from the gallery, creating a personal copy you can customize.
+        </p>
+
+        <h2 class="mt-4">Tips</h2>
+        <ul>
+            <li>Use compound logic groups to create complex conditions like "(RSI &lt; 30 AND Price &gt; MA) OR Volume &gt; 1M".</li>
+            <li>Start from a template and customize it rather than building from scratch.</li>
+            <li>Save your strategy early so you can use the live preview to validate conditions.</li>
+            <li>The builder and the classic editor both work with the same strategy data &mdash; switch between them freely.</li>
+        </ul>
+    </div>
+</section>

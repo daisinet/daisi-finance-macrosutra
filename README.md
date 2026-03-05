@@ -270,12 +270,19 @@ Completed the gaps left in Phases 2–6.
 - [x] Marketplace plugin packaging — `catalog.json` manifest for Daisinet marketplace distribution
 - [x] Test coverage — 54 tests across 8 tool test classes
 
-### Phase 11: Advanced Strategy Builder
+### Phase 11: Advanced Strategy Builder ✅
 
-- [ ] Visual drag-and-drop strategy builder UI with live preview
-- [ ] Strategy templates gallery — browse, preview, and fork starter strategies
-- [ ] Condition builder wizard — step-by-step guided condition creation
-- [ ] Live strategy preview — show simulated triggers against recent market data
+- [x] Visual drag-and-drop strategy builder UI (`/strategies/builder`) — three-panel layout with toolbox, canvas, and live preview
+- [x] Strategy templates gallery (`/strategies/templates`) — browse starter templates and community strategies, preview and fork
+- [x] Condition builder wizard — 4-step MudStepper dialog: type selection, operator, target value, review with natural language summary
+- [x] Live strategy preview — real-time per-condition pass/fail evaluation, auto-refresh toggle, evaluation timeline
+- [x] Builder toolbox — draggable conditions (9 types), actions (5 types), and logic groups with category organization
+- [x] Canvas with recursive condition groups — AND/OR toggle, nested groups (max depth 3), color-coded by depth
+- [x] Template preview dialog — read-only condition and action display with "Use Template" navigation
+- [x] ConditionWizardHelper — testable static helper for operators, input modes, descriptions, drag payload parsing
+- [x] Navigation integration — "Visual Builder" and "Templates" buttons on strategies page, "Templates" sidebar link
+- [x] Learn page — Visual Strategy Builder guide at `/learn/strategy-builder`
+- [x] Test coverage — 17 tests across ConditionWizardHelperTests and DragPayloadTests
 
 ### Phase 12: Advanced Trading Features
 

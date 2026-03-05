@@ -1,0 +1,37 @@
+@* Compact condition card for the visual builder canvas *@
+
+<MudPaper Class="pa-2 mb-2 canvas-condition-card" Outlined="true"
+          draggable="true" @ondragstart="OnDragStart">
+    <div class="d-flex align-center gap-2">
+        <MudIcon Icon="@ConditionWizardHelper.GetConditionTypeInfo(Condition.ConditionType).Icon" Size="Size.Small" />
+        <MudText Typo="Typo.body2" Class="flex-grow-1">
+            @ConditionWizardHelper.DescribeCondition(Condition)
+        </MudText>
+        <span class="condition-badge-@ConditionWizardHelper.GetConditionColor(Condition.ConditionType) px-2 py-1"
+              style="border-radius: 4px; font-size: 0.7rem; font-weight: 600;">
+            @ConditionWizardHelper.GetConditionTypeInfo(Condition.ConditionType).Category
+        </span>
+        @if (LiveResult != null)
+        {
+            <MudChip T="string" Size="Size.Small" Color="@(LiveResult.Passed ? Color.Success : Color.Error)">
+                @(LiveResult.Passed ? "Pass" : "Fail")
+            </MudChip>
+        }
+        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="OnEdit" Title="Edit" />
+        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                       OnClick="OnRemove" Title="Remove" />
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter] public TriggerCondition Condition { get; set; } = new();
+    [Parameter] public ConditionResult? LiveResult { get; set; }
+    [Parameter] public EventCallback OnRemove { get; set; }
+    [Parameter] public EventCallback OnEdit { get; set; }
+    [Parameter] public EventCallback<string> OnDragStarted { get; set; }
+
+    private async Task OnDragStart()
+    {
+        await OnDragStarted.InvokeAsync($"move-condition:{Condition.ConditionId}");
+    }
+}

@@ -1,0 +1,177 @@
+@* 4-step guided condition creation wizard *@
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(IsEditing ? "Edit Condition" : "Add Condition")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStepper @bind-ActiveIndex="activeStep" Linear="false" Color="Color.Primary">
+            @* Step 1: What to monitor *@
+            <MudStep Title="What to monitor">
+                <MudText Typo="Typo.subtitle1" Class="mb-3">Choose a condition type</MudText>
+                @foreach (var group in ConditionWizardHelper.GetAllConditionTypes().GroupBy(t => t.Category))
+                {
+                    <MudText Typo="Typo.overline" Class="mt-3 mb-1">@group.Key</MudText>
+                    <div class="wizard-type-grid">
+                        @foreach (var info in group)
+                        {
+                            <MudPaper Class="@($"wizard-type-card {(condition.ConditionType == info.Type ? "selected" : "")}")"
+                                      Outlined="true" @onclick="@(() => SelectType(info.Type))">
+                                <MudIcon Icon="@info.Icon" Size="Size.Large" />
+                                <MudText Typo="Typo.body2" Class="mt-1">@info.Name</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@info.Description</MudText>
+                            </MudPaper>
+                        }
+                    </div>
+                }
+            </MudStep>
+
+            @* Step 2: How to compare *@
+            <MudStep Title="How to compare">
+                <MudText Typo="Typo.subtitle1" Class="mb-3">Choose an operator</MudText>
+                <MudRadioGroup @bind-Value="condition.Operator">
+                    @foreach (var op in ConditionWizardHelper.GetOperatorsForType(condition.ConditionType))
+                    {
+                        <MudRadio T="ConditionOperator" Value="@op" Color="Color.Primary">
+                            @ConditionWizardHelper.DescribeOperator(op, condition.ConditionType)
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ms-2">@GetOperatorHint(op)</MudText>
+                        </MudRadio>
+                    }
+                </MudRadioGroup>
+            </MudStep>
+
+            @* Step 3: Set target *@
+            <MudStep Title="Set target">
+                <MudText Typo="Typo.subtitle1" Class="mb-3">Configure the target value</MudText>
+                @switch (ConditionWizardHelper.GetInputMode(condition.ConditionType))
+                {
+                    case ConditionWizardHelper.InputMode.TimePicker:
+                        <MudTimePicker Label="Time (Eastern)" @bind-Time="timeValue" Class="mb-3" />
+                        break;
+                    case ConditionWizardHelper.InputMode.DaySelector:
+                        <MudSelect T="decimal" @bind-Value="condition.Value" Label="Day of Week" Class="mb-3">
+                            <MudSelectItem T="decimal" Value="0m">Sunday</MudSelectItem>
+                            <MudSelectItem T="decimal" Value="1m">Monday</MudSelectItem>
+                            <MudSelectItem T="decimal" Value="2m">Tuesday</MudSelectItem>
+                            <MudSelectItem T="decimal" Value="3m">Wednesday</MudSelectItem>
+                            <MudSelectItem T="decimal" Value="4m">Thursday</MudSelectItem>
+                            <MudSelectItem T="decimal" Value="5m">Friday</MudSelectItem>
+                            <MudSelectItem T="decimal" Value="6m">Saturday</MudSelectItem>
+                        </MudSelect>
+                        break;
+                    default:
+                        <MudNumericField @bind-Value="condition.Value" Label="Value" Class="mb-3" />
+                        break;
+                }
+
+                @if (ConditionWizardHelper.RequiresPeriod(condition.ConditionType))
+                {
+                    <MudNumericField @bind-Value="period" Label="Period (bars)" Min="1" Max="500" Class="mb-3" />
+                }
+            </MudStep>
+
+            @* Step 4: Review *@
+            <MudStep Title="Review">
+                <MudText Typo="Typo.subtitle1" Class="mb-3">Review your condition</MudText>
+                <MudAlert Severity="Severity.Info" Class="mb-3">
+                    @ConditionWizardHelper.DescribeCondition(GetFinalCondition())
+                </MudAlert>
+
+                <MudPaper Class="pa-3" Outlined="true">
+                    <MudGrid>
+                        <MudItem xs="6"><MudText Typo="Typo.caption" Color="Color.Secondary">Type</MudText><MudText>@ConditionWizardHelper.GetConditionTypeInfo(condition.ConditionType).Name</MudText></MudItem>
+                        <MudItem xs="6"><MudText Typo="Typo.caption" Color="Color.Secondary">Operator</MudText><MudText>@ConditionWizardHelper.DescribeOperator(condition.Operator, condition.ConditionType)</MudText></MudItem>
+                        <MudItem xs="6"><MudText Typo="Typo.caption" Color="Color.Secondary">Value</MudText><MudText>@condition.Value</MudText></MudItem>
+                        @if (ConditionWizardHelper.RequiresPeriod(condition.ConditionType))
+                        {
+                            <MudItem xs="6"><MudText Typo="Typo.caption" Color="Color.Secondary">Period</MudText><MudText>@period bars</MudText></MudItem>
+                        }
+                    </MudGrid>
+                </MudPaper>
+            </MudStep>
+        </MudStepper>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Confirm"
+                   Disabled="@(activeStep < 3)">
+            @(IsEditing ? "Update Condition" : "Add Condition")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>
+    /// When set, the wizard edits an existing condition instead of creating a new one.
+    /// </summary>
+    [Parameter] public TriggerCondition? InitialCondition { get; set; }
+
+    private bool IsEditing => InitialCondition != null;
+    private TriggerCondition condition = new();
+    private int activeStep;
+    private int period = 14;
+    private TimeSpan? timeValue;
+
+    protected override void OnParametersSet()
+    {
+        if (InitialCondition != null)
+        {
+            condition = new TriggerCondition
+            {
+                ConditionId = InitialCondition.ConditionId,
+                ConditionType = InitialCondition.ConditionType,
+                Operator = InitialCondition.Operator,
+                Value = InitialCondition.Value,
+                Period = InitialCondition.Period
+            };
+            period = InitialCondition.Period ?? 14;
+            if (InitialCondition.ConditionType == ConditionType.TimeOfDay)
+            {
+                var mins = (int)InitialCondition.Value;
+                timeValue = new TimeSpan(mins / 60, mins % 60, 0);
+            }
+        }
+    }
+
+    private void SelectType(ConditionType type)
+    {
+        condition.ConditionType = type;
+        // Auto-set sensible default operator
+        var ops = ConditionWizardHelper.GetOperatorsForType(type);
+        if (!ops.Contains(condition.Operator))
+            condition.Operator = ops[0];
+    }
+
+    private TriggerCondition GetFinalCondition()
+    {
+        var final = new TriggerCondition
+        {
+            ConditionId = condition.ConditionId,
+            ConditionType = condition.ConditionType,
+            Operator = condition.Operator,
+            Value = condition.Value,
+            Period = ConditionWizardHelper.RequiresPeriod(condition.ConditionType) ? period : null
+        };
+
+        if (condition.ConditionType == ConditionType.TimeOfDay && timeValue.HasValue)
+            final.Value = (decimal)(timeValue.Value.Hours * 60 + timeValue.Value.Minutes);
+
+        return final;
+    }
+
+    private string GetOperatorHint(ConditionOperator op) => op switch
+    {
+        ConditionOperator.CrossesAbove => "Triggers when value moves from below to above target",
+        ConditionOperator.CrossesBelow => "Triggers when value moves from above to below target",
+        _ => ""
+    };
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Confirm()
+    {
+        MudDialog.Close(DialogResult.Ok(GetFinalCondition()));
+    }
+}

@@ -1,0 +1,62 @@
+@* Action card for the visual builder canvas with inline expand-to-edit *@
+
+<MudPaper Class="pa-2 mb-2 canvas-action-card" Outlined="true">
+    <div class="d-flex align-center gap-2">
+        <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" Size="Size.Small" />
+        <MudChip T="string" Size="Size.Small" Color="@(Action.Side == TradeSide.Buy ? Color.Success : Color.Error)">
+            @Action.Side
+        </MudChip>
+        <MudText Typo="Typo.body2" Class="flex-grow-1">
+            @Action.ActionType — @Action.Quantity @Action.QuantityType
+            @if (Action.LimitPrice.HasValue) { <text> @@ $@Action.LimitPrice</text> }
+        </MudText>
+        <MudIconButton Icon="@(expanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                       Size="Size.Small" OnClick="@(() => expanded = !expanded)" Title="Edit" />
+        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                       OnClick="OnRemove" Title="Remove" />
+    </div>
+
+    @if (expanded)
+    {
+        <MudDivider Class="my-2" />
+        <MudGrid>
+            <MudItem xs="6" md="3">
+                <MudSelect @bind-Value="Action.ActionType" Label="Type" Dense="true">
+                    @foreach (var at in Enum.GetValues<TradeActionType>())
+                    {
+                        <MudSelectItem Value="@at">@at</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" md="2">
+                <MudSelect @bind-Value="Action.Side" Label="Side" Dense="true">
+                    @foreach (var s in Enum.GetValues<TradeSide>())
+                    {
+                        <MudSelectItem Value="@s">@s</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudSelect @bind-Value="Action.QuantityType" Label="Qty Type" Dense="true">
+                    @foreach (var qt in Enum.GetValues<QuantityType>())
+                    {
+                        <MudSelectItem Value="@qt">@qt</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" md="2">
+                <MudNumericField @bind-Value="Action.Quantity" Label="Quantity" Dense="true" />
+            </MudItem>
+            <MudItem xs="6" md="2">
+                <MudNumericField @bind-Value="Action.LimitPrice" Label="Limit" Dense="true" />
+            </MudItem>
+        </MudGrid>
+    }
+</MudPaper>
+
+@code {
+    [Parameter] public TradeAction Action { get; set; } = new();
+    [Parameter] public EventCallback OnRemove { get; set; }
+
+    private bool expanded;
+}

@@ -1,0 +1,187 @@
+@page "/strategies/templates"
+
+<PageTitle>Strategy Templates — MacroSutra</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Strategy Templates</MudText>
+
+<MudTabs Rounded="true" ApplyEffectsToContainer="true" Class="mb-4">
+    @* Starter Templates *@
+    <MudTabPanel Text="Starter Templates" Icon="@Icons.Material.Filled.AutoAwesome">
+        @if (loadingTemplates)
+        {
+            <MudProgressLinear Indeterminate="true" Class="mb-4" />
+        }
+        else
+        {
+            @* Category filter *@
+            <MudChipSet T="string" @bind-SelectedValue="selectedCategory" Class="mb-4" SelectionMode="SelectionMode.SingleSelection">
+                <MudChip T="string" Value="@("")" Default="true">All</MudChip>
+                @foreach (var cat in templateCategories)
+                {
+                    <MudChip T="string" Value="@cat">@cat</MudChip>
+                }
+            </MudChipSet>
+
+            <MudGrid>
+                @foreach (var template in filteredTemplates)
+                {
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudCard Class="template-card" Style="height: 100%;">
+                            <MudCardContent>
+                                <MudText Typo="Typo.h6">@template.Name</MudText>
+                                <MudChip T="string" Size="Size.Small" Color="Color.Info">@template.Category</MudChip>
+                                <MudText Typo="Typo.body2" Class="mt-2">@template.Description</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+                                    @template.Conditions.Count condition(s), @template.Actions.Count action(s)
+                                </MudText>
+                            </MudCardContent>
+                            <MudCardActions>
+                                <MudButton Variant="Variant.Text" Color="Color.Info"
+                                           OnClick="@(() => PreviewTemplate(template))">Preview</MudButton>
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                           Href="@($"/strategies/builder?template={template.Id}")">Use Template</MudButton>
+                            </MudCardActions>
+                        </MudCard>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+    </MudTabPanel>
+
+    @* Community Strategies *@
+    <MudTabPanel Text="Community Strategies" Icon="@Icons.Material.Filled.People">
+        @if (loadingCommunity)
+        {
+            <MudProgressLinear Indeterminate="true" Class="mb-4" />
+        }
+        else
+        {
+            <MudGrid>
+                @foreach (var strat in communityStrategies)
+                {
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudCard Class="template-card" Style="height: 100%;">
+                            <MudCardContent>
+                                <MudText Typo="Typo.h6">@strat.Name</MudText>
+                                <MudText Typo="Typo.body2" Class="mt-2">@strat.Description</MudText>
+                                <MudStack Row="true" Class="mt-2">
+                                    @foreach (var sym in strat.Symbols.Take(3))
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Info">@sym</MudChip>
+                                    }
+                                    @if (strat.Symbols.Count > 3)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Default">+@(strat.Symbols.Count - 3)</MudChip>
+                                    }
+                                </MudStack>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+                                    @strat.Conditions.Count conditions — @strat.Actions.Count actions
+                                </MudText>
+                            </MudCardContent>
+                            <MudCardActions>
+                                <MudButton Variant="Variant.Text" Color="Color.Info"
+                                           Href="@($"/marketplace/{strat.id}")">View</MudButton>
+                                <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
+                                           OnClick="@(() => ForkStrategy(strat))">
+                                    <i class="fa-duotone fa-code-fork me-1"></i> Fork
+                                </MudButton>
+                            </MudCardActions>
+                        </MudCard>
+                    </MudItem>
+                }
+            </MudGrid>
+
+            @if (communityStrategies.Count > 0)
+            {
+                <div class="d-flex justify-center mt-4">
+                    <MudButton Variant="Variant.Text" OnClick="LoadMoreCommunity"
+                               Disabled="@(!hasMoreCommunity)">Load More</MudButton>
+                </div>
+            }
+        }
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
+    [CascadingParameter(Name = "CurrentUser")] private MacroSutraUser? CurrentUser { get; set; }
+    [Inject] private IDataProvider Data { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+    [Inject] private IDialogService DialogService { get; set; } = default!;
+
+    private List<StrategyTemplate> templates = new();
+    private List<TradingStrategy> communityStrategies = new();
+    private bool loadingTemplates = true;
+    private bool loadingCommunity = true;
+    private bool hasMoreCommunity = true;
+    private int communityPage;
+    private string selectedCategory = "";
+
+    private IEnumerable<string> templateCategories =>
+        templates.Select(t => t.Category).Distinct().OrderBy(c => c);
+
+    private IEnumerable<StrategyTemplate> filteredTemplates =>
+        string.IsNullOrEmpty(selectedCategory)
+            ? templates
+            : templates.Where(t => t.Category == selectedCategory);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await Task.WhenAll(LoadTemplates(), LoadCommunity());
+    }
+
+    private async Task LoadTemplates()
+    {
+        loadingTemplates = true;
+        try { templates = await Data.GetStrategyTemplatesAsync(); }
+        catch { Snackbar.Add("Failed to load templates.", Severity.Error); }
+        finally { loadingTemplates = false; }
+    }
+
+    private async Task LoadCommunity()
+    {
+        loadingCommunity = true;
+        try
+        {
+            communityStrategies = await Data.GetPublicStrategiesAsync(0, 20);
+            hasMoreCommunity = communityStrategies.Count == 20;
+            communityPage = 1;
+        }
+        catch { Snackbar.Add("Failed to load community strategies.", Severity.Error); }
+        finally { loadingCommunity = false; }
+    }
+
+    private async Task LoadMoreCommunity()
+    {
+        try
+        {
+            var more = await Data.GetPublicStrategiesAsync(communityPage, 20);
+            communityStrategies.AddRange(more);
+            hasMoreCommunity = more.Count == 20;
+            communityPage++;
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task PreviewTemplate(StrategyTemplate template)
+    {
+        var parameters = new DialogParameters<TemplatePreviewDialog>
+        {
+            { x => x.Template, template }
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        await DialogService.ShowAsync<TemplatePreviewDialog>("Template Preview", parameters, options);
+    }
+
+    private async Task ForkStrategy(TradingStrategy strat)
+    {
+        try
+        {
+            var forked = await Data.ForkStrategyAsync(strat.id, AccountId, CurrentUser?.id ?? "");
+            Snackbar.Add($"Forked '{strat.Name}'. Opening in builder...", Severity.Success);
+            Nav.NavigateTo($"/strategies/builder/{forked.id}");
+        }
+        catch (Exception ex) { Snackbar.Add($"Fork failed: {ex.Message}", Severity.Error); }
+    }
+}

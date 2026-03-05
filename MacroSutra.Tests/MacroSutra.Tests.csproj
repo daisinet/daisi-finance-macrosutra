@@ -20,6 +20,7 @@
     <ProjectReference Include="..\MacroSutra.Brokers\MacroSutra.Brokers.csproj" />
     <ProjectReference Include="..\MacroSutra.Services\MacroSutra.Services.csproj" />
     <ProjectReference Include="..\MacroSutra.Tools\MacroSutra.Tools.csproj" />
+    <ProjectReference Include="..\MacroSutra.UI\MacroSutra.UI.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,108 @@
+@* Recursive visual condition group for the builder canvas *@
+
+<MudPaper Class="@($"pa-3 mb-2 condition-group-depth-{Math.Min(Depth, 3)}")" Outlined="true"
+          @ondrop="HandleDrop" @ondragover:preventDefault="true"
+          @ondragenter="HandleDragOver" @ondragleave="HandleDragLeave">
+    <div class="d-flex align-center mb-2">
+        <MudToggleGroup T="LogicGroupType" @bind-Value="Group.Logic" Color="Color.Primary" Dense="true" Class="me-3">
+            <MudToggleItem T="LogicGroupType" Value="LogicGroupType.And" Text="AND" />
+            <MudToggleItem T="LogicGroupType" Value="LogicGroupType.Or" Text="OR" />
+        </MudToggleGroup>
+        <MudText Typo="Typo.caption" Class="me-auto">
+            @Group.Conditions.Count condition(s), @Group.ChildGroups.Count sub-group(s)
+        </MudText>
+        @if (OnRemove.HasDelegate)
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                           OnClick="OnRemove" Title="Remove Group" />
+        }
+    </div>
+
+    @* Conditions in this group *@
+    @foreach (var condition in Group.Conditions)
+    {
+        var liveResult = LiveResults?.FirstOrDefault(r => r.ConditionId == condition.ConditionId);
+        <CanvasConditionCard Condition="condition"
+                             LiveResult="liveResult"
+                             OnRemove="@(() => RemoveCondition(condition))"
+                             OnEdit="@(() => EditCondition.InvokeAsync(condition))"
+                             OnDragStarted="@(p => DragPayloadChanged.InvokeAsync(p))" />
+    }
+
+    @* Child groups (recursive) *@
+    @foreach (var childGroup in Group.ChildGroups)
+    {
+        <CanvasConditionGroup Group="childGroup"
+                              Depth="@(Depth + 1)"
+                              LiveResults="LiveResults"
+                              DragPayload="DragPayload"
+                              DragPayloadChanged="DragPayloadChanged"
+                              EditCondition="EditCondition"
+                              OnRemove="@(() => Group.ChildGroups.Remove(childGroup))" />
+    }
+
+    @if (Group.Conditions.Count == 0 && Group.ChildGroups.Count == 0)
+    {
+        <div class="canvas-drop-zone empty-zone @(isDragOver ? "drag-over" : "")">
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Drop conditions here or use buttons below
+            </MudText>
+        </div>
+    }
+
+    <MudStack Row="true" Class="mt-2">
+        <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="AddCondition" Size="Size.Small">
+            <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" /> Condition
+        </MudButton>
+        @if (Depth < 3)
+        {
+            <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="AddChildGroup" Size="Size.Small">
+                <MudIcon Icon="@Icons.Material.Filled.AccountTree" Size="Size.Small" /> Sub-Group
+            </MudButton>
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter] public ConditionGroup Group { get; set; } = new();
+    [Parameter] public int Depth { get; set; }
+    [Parameter] public EventCallback OnRemove { get; set; }
+    [Parameter] public List<ConditionResult>? LiveResults { get; set; }
+    [Parameter] public string? DragPayload { get; set; }
+    [Parameter] public EventCallback<string> DragPayloadChanged { get; set; }
+    [Parameter] public EventCallback<TriggerCondition> EditCondition { get; set; }
+
+    private bool isDragOver;
+
+    private void AddCondition()
+    {
+        var condition = new TriggerCondition();
+        Group.Conditions.Add(condition);
+        EditCondition.InvokeAsync(condition);
+    }
+
+    private void RemoveCondition(TriggerCondition condition) => Group.Conditions.Remove(condition);
+
+    private void AddChildGroup() => Group.ChildGroups.Add(new ConditionGroup());
+
+    private void HandleDragOver() => isDragOver = true;
+    private void HandleDragLeave() => isDragOver = false;
+
+    private void HandleDrop()
+    {
+        isDragOver = false;
+        if (string.IsNullOrEmpty(DragPayload)) return;
+
+        var (kind, value) = ConditionWizardHelper.ParseDragPayload(DragPayload);
+        switch (kind)
+        {
+            case "condition" when Enum.TryParse<ConditionType>(value, out var ct):
+                Group.Conditions.Add(new TriggerCondition { ConditionType = ct });
+                break;
+            case "group":
+                if (Depth < 3)
+                    Group.ChildGroups.Add(new ConditionGroup());
+                break;
+        }
+    }
+}

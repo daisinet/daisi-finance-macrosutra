@@ -1,0 +1,200 @@
+@page "/strategies/builder"
+@page "/strategies/builder/{Id}"
+
+<PageTitle>Strategy Builder — MacroSutra</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-2">Visual Strategy Builder</MudText>
+
+@* Strategy Header *@
+<MudCard Class="mb-4">
+    <MudCardContent>
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudTextField @bind-Value="strategy.Name" Label="Strategy Name" Required="true" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudTextField @bind-Value="strategy.Description" Label="Description" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <SymbolChipInput Symbols="strategy.Symbols" SymbolsChanged="@(s => strategy.Symbols = s)" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSelect @bind-Value="strategy.SizingMode" Label="Sizing Mode" Dense="true">
+                    @foreach (var sm in Enum.GetValues<SizingMode>())
+                    {
+                        <MudSelectItem Value="@sm">@sm</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSelect @bind-Value="strategy.Visibility" Label="Visibility" Dense="true">
+                    @foreach (var v in Enum.GetValues<StrategyVisibility>())
+                    {
+                        <MudSelectItem Value="@v">@v</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="4" Class="d-flex align-end gap-2">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">Save</MudButton>
+                <MudButton Variant="Variant.Text" Href="/strategies">Cancel</MudButton>
+            </MudItem>
+        </MudGrid>
+
+        @if (!string.IsNullOrEmpty(strategy.ForkedFromStrategyId))
+        {
+            <MudAlert Severity="Severity.Info" Class="mt-2" Dense="true">
+                <i class="fa-duotone fa-code-fork me-1"></i> Forked from strategy @strategy.ForkedFromStrategyId
+            </MudAlert>
+        }
+    </MudCardContent>
+</MudCard>
+
+@* Three-panel Builder Layout *@
+<div class="builder-layout">
+    @* Left: Toolbox *@
+    <BuilderToolbox OnDragPayload="SetDragPayload" />
+
+    @* Center: Canvas *@
+    <BuilderCanvas RootGroup="rootGroup"
+                   Actions="strategy.Actions"
+                   LiveResults="liveResults"
+                   DragPayload="@dragPayload"
+                   DragPayloadChanged="SetDragPayload"
+                   EditCondition="OpenConditionWizard" />
+
+    @* Right: Live Preview *@
+    <LivePreviewPanel StrategyId="@strategy.id"
+                      AccountId="@AccountId"
+                      OnResultReceived="OnPreviewResult" />
+</div>
+
+@code {
+    [Parameter] public string? Id { get; set; }
+    [CascadingParameter(Name = "AccountId")] private string AccountId { get; set; } = "";
+    [CascadingParameter(Name = "CurrentUser")] private MacroSutraUser? CurrentUser { get; set; }
+    [Inject] private IDataProvider Data { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+    [Inject] private IDialogService DialogService { get; set; } = default!;
+
+    private TradingStrategy strategy = new();
+    private ConditionGroup rootGroup = new();
+    private string? dragPayload;
+    private List<ConditionResult>? liveResults;
+    private bool isNew => string.IsNullOrEmpty(Id);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!isNew && !string.IsNullOrEmpty(AccountId))
+        {
+            var existing = await Data.GetStrategyAsync(Id!, AccountId);
+            if (existing != null)
+            {
+                strategy = existing;
+                rootGroup = strategy.RootConditionGroup ?? new ConditionGroup
+                {
+                    Logic = strategy.LogicGroup,
+                    Conditions = new List<TriggerCondition>(strategy.Conditions)
+                };
+            }
+        }
+
+        // Check for template query string
+        var uri = new Uri(Nav.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        var templateId = query["template"];
+        if (!string.IsNullOrEmpty(templateId) && isNew)
+        {
+            await ApplyTemplate(templateId);
+        }
+    }
+
+    private async Task ApplyTemplate(string templateId)
+    {
+        try
+        {
+            var template = await Data.GetStrategyTemplateAsync(templateId);
+            if (template == null) return;
+
+            strategy.Name = template.Name;
+            strategy.Description = template.Description;
+            rootGroup = new ConditionGroup
+            {
+                Logic = template.LogicGroup,
+                Conditions = template.Conditions.Select(c => new TriggerCondition
+                {
+                    ConditionType = c.ConditionType, Operator = c.Operator,
+                    Value = c.Value, Period = c.Period
+                }).ToList()
+            };
+            strategy.Actions = template.Actions.Select(a => new TradeAction
+            {
+                ActionType = a.ActionType, Side = a.Side,
+                QuantityType = a.QuantityType, Quantity = a.Quantity
+            }).ToList();
+            Snackbar.Add($"Template '{template.Name}' applied.", Severity.Info);
+        }
+        catch (Exception ex) { Snackbar.Add($"Failed to load template: {ex.Message}", Severity.Error); }
+    }
+
+    private void SetDragPayload(string payload)
+    {
+        dragPayload = payload;
+    }
+
+    private async Task OpenConditionWizard(TriggerCondition condition)
+    {
+        var parameters = new DialogParameters<ConditionWizard>
+        {
+            { x => x.InitialCondition, condition }
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ConditionWizard>("Condition Wizard", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: TriggerCondition updated })
+        {
+            condition.ConditionType = updated.ConditionType;
+            condition.Operator = updated.Operator;
+            condition.Value = updated.Value;
+            condition.Period = updated.Period;
+        }
+    }
+
+    private void OnPreviewResult(StrategyEvaluationResult result)
+    {
+        liveResults = result.Conditions;
+        StateHasChanged();
+    }
+
+    private async Task Save()
+    {
+        try
+        {
+            strategy.AccountId = AccountId;
+            strategy.UserId = CurrentUser?.id ?? "";
+            strategy.RootConditionGroup = rootGroup;
+
+            // Also populate flat conditions/logic for backward compatibility
+            strategy.Conditions = FlattenConditions(rootGroup);
+            strategy.LogicGroup = rootGroup.Logic;
+
+            if (isNew)
+                await Data.CreateStrategyAsync(strategy);
+            else
+                await Data.UpdateStrategyAsync(strategy);
+
+            Snackbar.Add("Strategy saved.", Severity.Success);
+            Nav.NavigateTo("/strategies");
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private static List<TriggerCondition> FlattenConditions(ConditionGroup group)
+    {
+        var list = new List<TriggerCondition>(group.Conditions);
+        foreach (var child in group.ChildGroups)
+            list.AddRange(FlattenConditions(child));
+        return list;
+    }
+}

@@ -6,9 +6,17 @@
 
 <MudText Typo="Typo.h4" Class="mb-4">Strategies</MudText>
 
-<MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/strategies/new" Class="mb-4">
-    <MudIcon Icon="@Icons.Material.Filled.Add" Class="me-1" /> New Strategy
-</MudButton>
+<MudStack Row="true" Class="mb-4">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/strategies/new">
+        <MudIcon Icon="@Icons.Material.Filled.Add" Class="me-1" /> New Strategy
+    </MudButton>
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/strategies/builder">
+        <MudIcon Icon="@Icons.Material.Filled.Dashboard" Class="me-1" /> Visual Builder
+    </MudButton>
+    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/strategies/templates">
+        <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Class="me-1" /> Templates
+    </MudButton>
+</MudStack>
 
 <MudTable Items="@strategies" Hover="true" Striped="true" Dense="true" Loading="@loading">
     <HeaderContent>
