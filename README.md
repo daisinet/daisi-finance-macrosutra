@@ -1,3 +1,9 @@
+# DAISI has moved to [Daisi Git](https://git.daisi.ai/daisinet/), a free and fast git management studio that we built from scratch in C#.
+## This code base is no longer kept up to date here.
+---
+
+
+
 # MacroSutra
 
 Finance application for the Daisinet ecosystem.
